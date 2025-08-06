@@ -15,6 +15,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import com.example.sodam_diary.data.LocationData
 
 /**
  * 위치 관련 유틸리티 클래스
@@ -122,11 +123,4 @@ class LocationHelper(private val context: Context) {
     }
 }
 
-/**
- * 위치 정보 데이터 클래스
- */
-data class LocationData(
-    val latitude: Double,
-    val longitude: Double,
-    val locationName: String?
-)
+// LocationData는 이제 DataModels.kt에 있음

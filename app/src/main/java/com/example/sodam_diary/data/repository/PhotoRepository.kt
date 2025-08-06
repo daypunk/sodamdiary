@@ -3,7 +3,7 @@ package com.example.sodam_diary.data.repository
 import android.content.Context
 import com.example.sodam_diary.data.database.AppDatabase
 import com.example.sodam_diary.data.database.PhotoDao
-import com.example.sodam_diary.data.entity.PhotoEntity
+import com.example.sodam_diary.data.PhotoEntity
 import com.example.sodam_diary.data.network.ApiService
 import com.example.sodam_diary.data.network.NetworkClient
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

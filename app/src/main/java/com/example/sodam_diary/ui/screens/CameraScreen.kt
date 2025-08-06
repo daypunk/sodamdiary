@@ -22,11 +22,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
 import com.example.sodam_diary.ui.components.CameraPreview
 import java.io.File
 import com.example.sodam_diary.util.getCurrentLocation
@@ -180,22 +175,5 @@ fun CameraScreen(navController: NavController) {
     }
 }
 
-@Composable
-fun AppNavigation(navController: NavHostController) {
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
-            MainScreen(navController)
-        }
-        composable("camera") {
-            CameraScreen(navController)
-        }
-        composable(
-            "preview/{imagePath}",
-            arguments = listOf(navArgument("imagePath") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val imagePath = backStackEntry.arguments?.getString("imagePath") ?: ""
-            PreviewScreen(navController, imagePath)
-        }
-    }
-}
+// AppNavigation은 이제 MainActivity에 있음
 

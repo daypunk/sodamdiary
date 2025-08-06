@@ -1,7 +1,7 @@
 package com.example.sodam_diary.data.database
 
 import androidx.room.*
-import com.example.sodam_diary.data.entity.PhotoEntity
+import com.example.sodam_diary.data.PhotoEntity
 
 /**
  * 사진 데이터 접근을 위한 DAO (Data Access Object)
