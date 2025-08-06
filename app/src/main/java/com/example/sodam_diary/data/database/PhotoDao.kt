@@ -22,7 +22,7 @@ interface PhotoDao {
     suspend fun getAllPhotos(): List<PhotoEntity>
     
     /**
-     * ID로 특정 사진 조회
+    // ID로 특정 사진 조회
      */
     @Query("SELECT * FROM photos WHERE id = :photoId")
     suspend fun getPhotoById(photoId: Long): PhotoEntity?
