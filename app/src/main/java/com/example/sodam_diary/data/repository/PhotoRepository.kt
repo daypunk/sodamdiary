@@ -1,6 +1,7 @@
 package com.example.sodam_diary.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.example.sodam_diary.data.database.AppDatabase
 import com.example.sodam_diary.data.database.PhotoDao
 import com.example.sodam_diary.data.entity.PhotoEntity
@@ -10,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 /**
@@ -33,8 +35,13 @@ class PhotoRepository(context: Context) {
         captureDate: Long
     ): Result<Long> {
         return try {
+            Log.d("PhotoRepository", "📸 사진 저장 시작 - Path: $photoPath")
+            Log.d("PhotoRepository", "🌍 위치 정보 - lat: $latitude, lng: $longitude, 주소: $locationName")
+            Log.d("PhotoRepository", "✏️ 사용자 입력 - userDescription: ${userDescription?.take(50)}")
+            
             // 1. 서버에 사진과 설명 전송
             val imageDescription = uploadPhotoAndGetDescription(photoPath, userDescription)
+            Log.d("PhotoRepository", "🤖 서버 응답 - imageDescription: ${imageDescription?.take(100)}")
             
             // 2. 모든 정보를 로컬 DB에 저장
             val photoEntity = PhotoEntity(
@@ -48,8 +55,42 @@ class PhotoRepository(context: Context) {
             )
             
             val photoId = photoDao.insertPhoto(photoEntity)
+            Log.d("PhotoRepository", "💾 DB 저장 완료 - Photo ID: $photoId")
             Result.success(photoId)
             
+        } catch (e: Exception) {
+            Log.e("PhotoRepository", "❌ 사진 저장 실패", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 서버 통신 없이 빠르게 로컬 DB에만 저장 (개발/테스트용)
+     */
+    suspend fun savePhotoLocal(
+        photoPath: String,
+        userDescription: String?,
+        latitude: Double?,
+        longitude: Double?,
+        locationName: String?,
+        captureDate: Long
+    ): Result<Long> {
+        return try {
+            // 임시 이미지 설명 (서버 통신 없이)
+            val imageDescription = "사진이 성공적으로 저장되었습니다."
+            
+            val photoEntity = PhotoEntity(
+                photoPath = photoPath,
+                captureDate = captureDate,
+                latitude = latitude,
+                longitude = longitude,
+                locationName = locationName,
+                imageDescription = imageDescription,
+                userDescription = userDescription
+            )
+            
+            val photoId = photoDao.insertPhoto(photoEntity)
+            Result.success(photoId)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -63,33 +104,51 @@ class PhotoRepository(context: Context) {
         userDescription: String?
     ): String? {
         return try {
+            Log.d("PhotoRepository", "🌐 서버 통신 시작 - File: $photoPath")
             val photoFile = File(photoPath)
             
             // 사진 파일을 MultipartBody로 변환 (선택사항이므로 null 가능)
             val photoPart = if (photoFile.exists()) {
+                Log.d("PhotoRepository", "📁 파일 존재 확인 - Size: ${photoFile.length()} bytes")
                 val photoRequestBody = photoFile.asRequestBody("image/*".toMediaTypeOrNull())
                 MultipartBody.Part.createFormData("file", photoFile.name, photoRequestBody)
             } else {
+                Log.w("PhotoRepository", "⚠️ 파일이 존재하지 않음: $photoPath")
                 null
             }
             
             // 사용자 설명을 RequestBody로 변환 (선택사항이므로 null 가능)
             val fileInfoRequestBody = if (!userDescription.isNullOrBlank()) {
+                Log.d("PhotoRepository", "📝 사용자 설명 포함: ${userDescription.take(30)}")
                 userDescription.toRequestBody("text/plain".toMediaTypeOrNull())
             } else {
+                Log.d("PhotoRepository", "📝 사용자 설명 없음")
                 null
             }
             
-            // 서버에 전송
-            val response = apiService.analyzePhoto(photoPart, fileInfoRequestBody)
+            // 서버에 전송 (3초 타임아웃)
+            Log.d("PhotoRepository", "⏱️ 서버 요청 시작 (3초 타임아웃)")
+            val response = withTimeoutOrNull(3000) {
+                apiService.analyzePhoto(photoPart, fileInfoRequestBody)
+            }
             
-            if (response.isSuccessful) {
-                response.body()?.data?.file_description
-            } else {
-                null
+            when {
+                response == null -> {
+                    Log.w("PhotoRepository", "⏰ 서버 응답 타임아웃 (3초)")
+                    null
+                }
+                response.isSuccessful -> {
+                    val description = response.body()?.data?.file_description
+                    Log.d("PhotoRepository", "✅ 서버 응답 성공: $description")
+                    description
+                }
+                else -> {
+                    Log.w("PhotoRepository", "❌ 서버 응답 실패 - Code: ${response.code()}")
+                    null
+                }
             }
         } catch (e: Exception) {
-            // 네트워크 오류 시 null 반환 (오프라인 모드)
+            Log.e("PhotoRepository", "🚫 네트워크 오류 (오프라인 모드)", e)
             null
         }
     }
