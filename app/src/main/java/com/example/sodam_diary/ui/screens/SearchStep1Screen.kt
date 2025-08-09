@@ -93,7 +93,8 @@ fun SearchStep1Screen(navController: NavController) {
                 Button(
                     onClick = {
                         // 년도 없이 2단계로 이동
-                        navController.navigate("search_step2/null")
+                        // 연도 스킵: placeholder "-" 전달
+                        navController.navigate("search_step2/-")
                     },
                     modifier = Modifier
                         .fillMaxWidth()

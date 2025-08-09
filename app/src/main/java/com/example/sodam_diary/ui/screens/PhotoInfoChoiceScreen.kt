@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import com.example.sodam_diary.ui.components.PrimaryActionButton
+import com.example.sodam_diary.ui.components.SecondaryActionButton
 import com.example.sodam_diary.utils.PhotoManager
 import java.io.File
 
@@ -97,10 +99,9 @@ fun PhotoInfoChoiceScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 상단 버튼: 괜찮아요 (화이트 보더 + 화이트 텍스트)
-                Button(
-                    onClick = { 
-                        // 바로 결과 화면으로 (userDescription 없이)
+                SecondaryActionButton(
+                    text = "괜찮아요",
+                    onClick = {
                         val encodedPath = Uri.encode(decodedPath)
                         navController.navigate("photo_detail/$encodedPath") {
                             popUpTo("main") { inclusive = false }
@@ -108,53 +109,17 @@ fun PhotoInfoChoiceScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .border(
-                            width = 2.dp,
-                            color = Color.White,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .semantics { contentDescription = "정보 추가 없이 저장하기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "괜찮아요",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .semantics { contentDescription = "정보 추가 없이 저장하기" }
+                )
                 
                 // 하단 버튼: 추가하기 (화이트 백그라운드 + 블랙 텍스트)
-                Button(
-                    onClick = { 
-                        showDialog = true
-                    },
+                PrimaryActionButton(
+                    text = "추가하기",
+                    onClick = { showDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .semantics { contentDescription = "정보 추가하기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
-                    )
-                ) {
-                    Text(
-                        text = "추가하기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .semantics { contentDescription = "정보 추가하기" }
+                )
             }
         }
     }

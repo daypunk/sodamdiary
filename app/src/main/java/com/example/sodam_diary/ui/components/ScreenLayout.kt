@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * 모든 화면에서 사용할 공통 레이아웃
@@ -92,5 +93,62 @@ fun ScreenLayout(
         
         // 메인 컨텐츠
         content()
+    }
+}
+
+/**
+ * 접근성 친화적 기본 액션 버튼 (화이트 배경, 블랙 텍스트)
+ */
+@Composable
+fun PrimaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = text
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .semantics { this.contentDescription = contentDescription },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White,
+            contentColor = Color.Black
+        ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 8.dp,
+            pressedElevation = 4.dp
+        )
+    ) {
+        Text(text = text, fontSize = 22.sp)
+    }
+}
+
+/**
+ * 접근성 친화적 보조 액션 버튼 (투명 배경, 화이트 보더/텍스트)
+ */
+@Composable
+fun SecondaryActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = text
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .semantics { this.contentDescription = contentDescription },
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.White
+        ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        border = ButtonDefaults.outlinedButtonBorder,
+    ) {
+        Text(text = text, fontSize = 22.sp, color = Color.White)
     }
 }

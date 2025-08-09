@@ -67,8 +67,10 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
                         Button(
                             onClick = { 
                                 selectedMonth = month
-                                val yearParam = selectedYear ?: "null"
-                                navController.navigate("search_step3/$yearParam/$month")
+                                val yearParam = selectedYear ?: "-"
+                                val yearSafe = android.net.Uri.encode(yearParam)
+                                val monthSafe = android.net.Uri.encode(month)
+                                navController.navigate("search_step3/$yearSafe/$monthSafe")
                             },
                             modifier = Modifier
                                 .aspectRatio(1f)
@@ -104,9 +106,11 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
                 // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)
                 Button(
                     onClick = {
-                        // 월 없이 3단계로 이동
-                        val yearParam = selectedYear ?: "null"
-                        navController.navigate("search_step3/$yearParam/null")
+                        // 월 스킵: 연도도 비었으면 '-' 사용
+                        val yearParam = selectedYear ?: "-"
+                        val yearSafe = android.net.Uri.encode(yearParam)
+                        val monthSafe = android.net.Uri.encode("-")
+                        navController.navigate("search_step3/$yearSafe/$monthSafe")
                     },
                     modifier = Modifier
                         .fillMaxWidth()

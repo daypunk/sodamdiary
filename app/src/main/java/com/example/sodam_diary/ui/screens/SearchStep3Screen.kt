@@ -103,10 +103,13 @@ fun SearchStep3Screen(
                     Button(
                         onClick = {
                             if (locationInput.isNotBlank()) {
-                                val yearParam = selectedYear ?: "null"
-                                val monthParam = selectedMonth ?: "null"
-                                val locationParam = android.net.Uri.encode(locationInput)
-                                navController.navigate("search_step4/$yearParam/$monthParam/$locationParam")
+                                val yearParam = selectedYear ?: "-"
+                                val monthParam = selectedMonth ?: "-"
+                                val locationParam = locationInput
+                                val yearSafe = android.net.Uri.encode(yearParam)
+                                val monthSafe = android.net.Uri.encode(monthParam)
+                                val locationSafe = android.net.Uri.encode(locationParam)
+                                navController.navigate("search_step4/$yearSafe/$monthSafe/$locationSafe")
                             }
                         },
                         modifier = Modifier
@@ -149,9 +152,13 @@ fun SearchStep3Screen(
                 // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)
                 Button(
                     onClick = {
-                        val yearParam = selectedYear ?: "null"
-                        val monthParam = selectedMonth ?: "null"
-                        navController.navigate("search_step4/$yearParam/$monthParam/null")
+                        val yearParam = selectedYear ?: "-"
+                        val monthParam = selectedMonth ?: "-"
+                        val locationParam = "-"
+                        val yearSafe = android.net.Uri.encode(yearParam)
+                        val monthSafe = android.net.Uri.encode(monthParam)
+                        val locationSafe = android.net.Uri.encode(locationParam)
+                        navController.navigate("search_step4/$yearSafe/$monthSafe/$locationSafe")
                     },
                     modifier = Modifier
                         .fillMaxWidth()

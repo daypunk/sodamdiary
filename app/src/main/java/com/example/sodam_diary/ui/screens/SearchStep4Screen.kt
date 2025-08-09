@@ -106,12 +106,15 @@ fun SearchStep4Screen(
                         onClick = {
                             if (contentInput.isNotBlank()) {
                                 // 검색 결과 화면으로 이동
-                                val yearParam = selectedYear ?: "null"
-                                val monthParam = selectedMonth ?: "null"
-                                val locationParam = selectedLocation ?: "null"
-                                val contentParam = Uri.encode(contentInput)
-                                
-                                val searchParams = "$yearParam/$monthParam/$locationParam/$contentParam"
+                        val yearParam = selectedYear ?: "-"
+                        val monthParam = selectedMonth ?: "-"
+                        val locationParam = selectedLocation ?: "-"
+                                val searchParams = listOf(
+                                    Uri.encode(yearParam),
+                                    Uri.encode(monthParam),
+                                    Uri.encode(locationParam),
+                                    Uri.encode(contentInput)
+                                ).joinToString("/")
                                 navController.navigate("search_result/$searchParams")
                             }
                         },
@@ -156,12 +159,15 @@ fun SearchStep4Screen(
                 Button(
                     onClick = {
                         // 검색 결과 화면으로 이동
-                        val yearParam = selectedYear ?: "null"
-                        val monthParam = selectedMonth ?: "null"
-                        val locationParam = selectedLocation ?: "null"
-                        val contentParam = "null" // 내용 없이 검색
-                        
-                        val searchParams = "$yearParam/$monthParam/$locationParam/$contentParam"
+                        val yearParam = selectedYear ?: "-"
+                        val monthParam = selectedMonth ?: "-"
+                        val locationParam = selectedLocation ?: "-"
+                        val searchParams = listOf(
+                            Uri.encode(yearParam),
+                            Uri.encode(monthParam),
+                            Uri.encode(locationParam),
+                            Uri.encode("-")
+                        ).joinToString("/")
                         navController.navigate("search_result/$searchParams")
                     },
                     modifier = Modifier

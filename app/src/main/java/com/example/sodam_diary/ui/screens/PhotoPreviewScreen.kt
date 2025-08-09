@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.utils.PhotoManager
 import com.example.sodam_diary.ui.components.ScreenLayout
+import com.example.sodam_diary.ui.components.PrimaryActionButton
+import com.example.sodam_diary.ui.components.SecondaryActionButton
 import java.io.File
 
 @Composable
@@ -95,65 +97,28 @@ fun PhotoPreviewScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 상단 버튼: 다시 찍기 (화이트 보더 + 화이트 텍스트)
-                Button(
-                    onClick = { 
-                        // 촬영된 파일 삭제
+                SecondaryActionButton(
+                    text = "다시 찍기",
+                    onClick = {
                         imageFile.delete()
-                        // 카메라 화면으로 돌아가기
                         navController.popBackStack()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .border(
-                            width = 2.dp,
-                            color = Color.White,
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                        )
-                        .semantics { contentDescription = "다시 찍기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = Color.White
-                    ),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "다시 찍기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .semantics { contentDescription = "다시 찍기" }
+                )
                 
                 // 하단 버튼: 사진 사용 (화이트 백그라운드 + 블랙 텍스트)
-                Button(
+                PrimaryActionButton(
+                    text = "사진 사용",
                     onClick = {
-                        // 정보 추가 선택 화면으로 이동
                         val encodedPath = Uri.encode(decodedPath)
                         navController.navigate("photo_info_choice/$encodedPath")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .semantics { contentDescription = "사진 사용하기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Black
-                    ),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
-                    )
-                ) {
-                    Text(
-                        text = "사진 사용",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .semantics { contentDescription = "사진 사용하기" }
+                )
             }
         }
     }

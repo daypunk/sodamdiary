@@ -54,32 +54,26 @@ fun SearchResultScreen(
                 isLoading = true
                 
                 // 파라미터 정리
-                val year = if (selectedYear == "null") null else selectedYear
-                val month = if (selectedMonth == "null") null else selectedMonth?.padStart(2, '0')
-                val location = if (selectedLocation == "null") null else selectedLocation
-                val content = if (selectedContent == "null") null else Uri.decode(selectedContent ?: "")
+                val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
+                val monthRaw = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
+                val month = monthRaw?.padStart(2, '0')
+                val location = when (selectedLocation) { null, "null", "-" -> null; else -> selectedLocation }
+                val content = when (selectedContent) { null, "null", "-" -> null; else -> Uri.decode(selectedContent) }
                 
-                // 검색 로직
+                // 검색 로직: 단순하고 일관된 단계별 필터 (연/월/장소)
                 var results = photoRepository.getAllPhotos()
                 
-                // 단계별 필터링
                 val yearInt = year?.toIntOrNull()
                 val monthInt = month?.toIntOrNull()
                 
-                // 연도/월 + 장소 조합 필터링 (타입 불일치 해결)
-                when {
-                    yearInt != null && monthInt != null && location != null -> {
-                        // 연도, 월, 장소 모두 있는 경우
-                        results = photoRepository.getPhotosByYearMonthAndLocation(yearInt, monthInt, location)
-                    }
-                    yearInt != null && monthInt != null -> {
-                        // 연도, 월만 있는 경우
-                        results = photoRepository.getPhotosByYearMonth(yearInt, monthInt)
-                    }
-                    location != null -> {
-                        // 장소만 있는 경우
-                        results = photoRepository.getPhotosByLocation(location)
-                    }
+                if (yearInt != null) {
+                    results = results.filter { extractYear(it.captureDate) == yearInt }
+                }
+                if (monthInt != null) {
+                    results = results.filter { extractMonth(it.captureDate) == monthInt }
+                }
+                if (!location.isNullOrBlank()) {
+                    results = results.filter { it.locationName?.contains(location, ignoreCase = true) == true }
                 }
                 
                 // 내용 필터링 (이미지 설명이나 사용자 설명에서 검색)
@@ -317,4 +311,17 @@ private fun formatSearchResultDate(timestamp: Long): String {
     val date = java.util.Date(timestamp)
     val formatter = java.text.SimpleDateFormat("M월 d일", java.util.Locale.KOREAN)
     return formatter.format(date)
+}
+
+private fun extractYear(timestamp: Long): Int {
+    val cal = java.util.Calendar.getInstance()
+    cal.timeInMillis = timestamp
+    return cal.get(java.util.Calendar.YEAR)
+}
+
+private fun extractMonth(timestamp: Long): Int {
+    val cal = java.util.Calendar.getInstance()
+    cal.timeInMillis = timestamp
+    // Calendar.MONTH는 0부터 시작하므로 +1
+    return cal.get(java.util.Calendar.MONTH) + 1
 }

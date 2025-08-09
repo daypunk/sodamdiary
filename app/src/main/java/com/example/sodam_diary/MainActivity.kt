@@ -101,7 +101,10 @@ fun AppNavigation() {
             arguments = listOf(navArgument("selectedYear") { type = NavType.StringType })
         ) { backStackEntry ->
             val selectedYear = backStackEntry.arguments?.getString("selectedYear")
-            val year = if (selectedYear == "null") null else selectedYear
+            val year = when (selectedYear) {
+                null, "null", "-" -> null
+                else -> selectedYear
+            }
             SearchStep2Screen(navController, year)
         }
         composable(
@@ -113,8 +116,8 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val selectedYear = backStackEntry.arguments?.getString("selectedYear")
             val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
-            val year = if (selectedYear == "null") null else selectedYear
-            val month = if (selectedMonth == "null") null else selectedMonth
+            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
+            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
             SearchStep3Screen(navController, year, month)
         }
         composable(
@@ -128,9 +131,9 @@ fun AppNavigation() {
             val selectedYear = backStackEntry.arguments?.getString("selectedYear")
             val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
             val selectedLocation = backStackEntry.arguments?.getString("selectedLocation")
-            val year = if (selectedYear == "null") null else selectedYear
-            val month = if (selectedMonth == "null") null else selectedMonth
-            val location = if (selectedLocation == "null") null else selectedLocation
+            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
+            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
+            val location = when (selectedLocation) { null, "null", "-" -> null; else -> selectedLocation }
             SearchStep4Screen(navController, year, month, location)
         }
         composable(
@@ -146,10 +149,10 @@ fun AppNavigation() {
             val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
             val selectedLocation = backStackEntry.arguments?.getString("selectedLocation")
             val selectedContent = backStackEntry.arguments?.getString("selectedContent")
-            val year = if (selectedYear == "null") null else selectedYear
-            val month = if (selectedMonth == "null") null else selectedMonth
-            val location = if (selectedLocation == "null") null else selectedLocation
-            val content = if (selectedContent == "null") null else selectedContent
+            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
+            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
+            val location = when (selectedLocation) { null, "null", "-" -> null; else -> selectedLocation }
+            val content = when (selectedContent) { null, "null", "-" -> null; else -> selectedContent }
             SearchResultScreen(navController, year, month, location, content)
         }
     }
