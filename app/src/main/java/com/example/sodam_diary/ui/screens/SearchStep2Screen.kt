@@ -61,7 +61,8 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
                     columns = GridCells.Fixed(4),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.height(240.dp) // 3행 고정 높이
+                    contentPadding = PaddingValues(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     items(months) { month ->
                         Button(

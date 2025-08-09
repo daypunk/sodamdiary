@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 
 @Composable
 fun SearchStep4Screen(
@@ -81,7 +83,7 @@ fun SearchStep4Screen(
                             onValueChange = { contentInput = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .semantics { contentDescription = "촬영 내용 입력 필드" },
+                                .semantics { contentDescription = "촬영 내용 입력창" },
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 color = Color.White,
                                 fontSize = 24.sp,
@@ -120,21 +122,23 @@ fun SearchStep4Screen(
                         },
                         modifier = Modifier
                             .size(60.dp)
-                            .semantics { contentDescription = "전송" },
+                            .semantics { contentDescription = "입력" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor = Color.Black
                         ),
+                        contentPadding = PaddingValues(0.dp),
                         shape = RoundedCornerShape(8.dp),
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 8.dp,
                             pressedElevation = 4.dp
                         )
                     ) {
-                        Text(
-                            text = "→",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(36.dp)
                         )
                     }
                 }

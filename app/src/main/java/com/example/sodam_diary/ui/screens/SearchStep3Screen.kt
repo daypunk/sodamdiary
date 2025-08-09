@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 
 @Composable
 fun SearchStep3Screen(
@@ -79,7 +81,7 @@ fun SearchStep3Screen(
                             onValueChange = { locationInput = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .semantics { contentDescription = "장소 입력 필드" },
+                                .semantics { contentDescription = "장소 입력창" },
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 color = Color.White,
                                 fontSize = 24.sp,
@@ -91,7 +93,7 @@ fun SearchStep3Screen(
                         // 플레이스홀더
                         if (locationInput.isEmpty()) {
                             Text(
-                                text = "서울",
+                                text = "서울, 부산 등",
                                 color = Color.White.copy(alpha = 0.5f),
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Normal
@@ -114,21 +116,23 @@ fun SearchStep3Screen(
                         },
                         modifier = Modifier
                             .size(60.dp)
-                            .semantics { contentDescription = "전송" },
+                            .semantics { contentDescription = "입력" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor = Color.Black
                         ),
+                        contentPadding = PaddingValues(0.dp),
                         shape = RoundedCornerShape(8.dp),
                         elevation = ButtonDefaults.buttonElevation(
                             defaultElevation = 8.dp,
                             pressedElevation = 4.dp
                         )
                     ) {
-                        Text(
-                            text = "→",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(36.dp)
                         )
                     }
                 }
