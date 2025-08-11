@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import com.example.sodam_diary.ui.components.SecondaryActionButton
 
 @Composable
 fun SearchStep1Screen(navController: NavController) {
@@ -90,33 +91,17 @@ fun SearchStep1Screen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)
-                Button(
+                SecondaryActionButton(
+                    text = "건너뛰기",
                     onClick = {
-                        // 년도 없이 2단계로 이동
                         // 연도 스킵: placeholder "-" 전달
                         navController.navigate("search_step2/-")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .semantics { contentDescription = "건너뛰기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Gray,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
-                    )
-                ) {
-                    Text(
-                        text = "건너뛰기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .height(64.dp)
+                        .semantics { contentDescription = "건너뛰기" }
+                )
             }
         }
     }

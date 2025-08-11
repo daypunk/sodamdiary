@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import com.example.sodam_diary.ui.components.SecondaryActionButton
 
 @Composable
 fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
@@ -29,7 +30,8 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
     ScreenLayout(
         showBackButton = true,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        screenAnnouncement = "월 선택 화면입니다. 월을 선택하거나 건너뛰기 버튼을 누르세요."
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -38,9 +40,10 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
         ) {
             // 상단 타이틀
             Text(
-                text = "몇 월인지 알려주세요",
+                text = "몇 월인지\n알려주세요",
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
+                lineHeight = 48.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
@@ -104,10 +107,9 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)
-                Button(
+                SecondaryActionButton(
+                    text = "건너뛰기",
                     onClick = {
-                        // 월 스킵: 연도도 비었으면 '-' 사용
                         val yearParam = selectedYear ?: "-"
                         val yearSafe = android.net.Uri.encode(yearParam)
                         val monthSafe = android.net.Uri.encode("-")
@@ -115,25 +117,9 @@ fun SearchStep2Screen(navController: NavController, selectedYear: String?) {
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .semantics { contentDescription = "건너뛰기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Gray,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
-                    )
-                ) {
-                    Text(
-                        text = "건너뛰기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .height(64.dp)
+                        .semantics { contentDescription = "건너뛰기" }
+                )
             }
         }
     }

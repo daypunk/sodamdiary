@@ -17,9 +17,9 @@ interface ApiService {
      * @return 서버로부터 받은 이미지 설명
      */
     @Multipart
-    @POST("test/pickerToText/")
+    @POST("api/v1/images/caption/")
     suspend fun analyzePhoto(
-        @Part photo: MultipartBody.Part?,
+        @Part file: MultipartBody.Part?,
         @Part("file_info") fileInfo: RequestBody?
     ): Response<ApiResponse>
 }
@@ -37,5 +37,5 @@ data class ApiResponse(
  * 응답 데이터 내부 구조
  */
 data class ResponseData(
-    val file_description: String
+    val refined_caption: String
 )

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.sodam_diary.ui.components.ScreenLayout
+import com.example.sodam_diary.ui.components.SecondaryActionButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 
@@ -34,10 +35,13 @@ fun SearchStep4Screen(
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
     ScreenLayout(
         showBackButton = true,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        screenAnnouncement = "내용 입력 화면입니다. 촬영 대상이나 키워드를 입력한 뒤 입력 버튼을 누르세요. 건너뛰기도 가능합니다."
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -70,36 +74,42 @@ fun SearchStep4Screen(
                         .padding(bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 텍스트필드
-                    Box(
+                    // 디자인 복원: BasicTextField + 플레이스홀더, TalkBack 라벨은 별도 제공
+                    Column(
                         modifier = Modifier
                             .weight(1f)
                             .height(60.dp)
-                            .padding(end = 16.dp),
-                        contentAlignment = Alignment.CenterStart
+                            .padding(end = 16.dp)
                     ) {
-                        BasicTextField(
-                            value = contentInput,
-                            onValueChange = { contentInput = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .semantics { contentDescription = "촬영 내용 입력창" },
-                            textStyle = androidx.compose.ui.text.TextStyle(
-                                color = Color.White,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Normal
-                            ),
-                            singleLine = true
+                        Text(
+                            text = "촬영 내용",
+                            color = Color.White.copy(alpha = 0.001f),
+                            fontSize = 1.sp,
+                            modifier = Modifier.semantics { contentDescription = "촬영 내용" }
                         )
-                        
-                        // 플레이스홀더
-                        if (contentInput.isEmpty()) {
-                            Text(
-                                text = "바다, 강아지 등",
-                                color = Color.White.copy(alpha = 0.5f),
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Normal
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            BasicTextField(
+                                value = contentInput,
+                                onValueChange = { contentInput = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .semantics { contentDescription = "촬영 내용 입력 필드" },
+                                textStyle = androidx.compose.ui.text.TextStyle(
+                                    color = Color.White,
+                                    fontSize = 24.sp
+                                ),
+                                singleLine = true
                             )
+                            if (contentInput.isEmpty()) {
+                                Text(
+                                    text = "예: 바다, 강아지 등",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 24.sp
+                                )
+                            }
                         }
                     }
                     
@@ -152,17 +162,16 @@ fun SearchStep4Screen(
                 )
             }
             
-            // 하단 버튼 영역 - 검색하기만
+                // 하단 버튼 영역 - 검색하기만
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)
-                Button(
+                SecondaryActionButton(
+                    text = "건너뛰기",
                     onClick = {
-                        // 검색 결과 화면으로 이동
                         val yearParam = selectedYear ?: "-"
                         val monthParam = selectedMonth ?: "-"
                         val locationParam = selectedLocation ?: "-"
@@ -176,25 +185,9 @@ fun SearchStep4Screen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(60.dp)
-                        .semantics { contentDescription = "건너뛰기" },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Gray,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 8.dp,
-                        pressedElevation = 4.dp
-                    )
-                ) {
-                    Text(
-                        text = "건너뛰기",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                        .height(64.dp)
+                        .semantics { contentDescription = "건너뛰기" }
+                )
             }
         }
     }

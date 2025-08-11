@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -44,8 +45,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Status bar 표시 설정
-        WindowCompat.setDecorFitsSystemWindows(window, true)
+        // Edge-to-edge 모드 활성화: 시스템 바 영역까지 그리되, Compose 쪽에서 안전영역 패딩 처리
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        // 상태/내비게이션 바를 검은색으로 고정하고 아이콘을 밝게 유지 (항상 블랙 UI 요구)
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        window.statusBarColor = android.graphics.Color.BLACK
+        window.navigationBarColor = android.graphics.Color.BLACK
+        controller.isAppearanceLightStatusBars = false  // 밝은 아이콘(화이트)
+        controller.isAppearanceLightNavigationBars = false  // 밝은 아이콘(화이트)
         
         setContent {
             SodamdiaryTheme {
@@ -252,29 +259,12 @@ fun MainScreen(navController: NavHostController) {
                     )
                 }
                 }
-                
-                // 가이드 텍스트 - 버튼들과 함께 중앙 그룹에 포함
-    Text(
-                    text = "버튼을 터치하여 시작하세요",
-                    fontSize = 16.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .padding(top = 32.dp)
-                        .semantics { contentDescription = "사용 안내: 버튼을 터치하여 시작하세요" }
-                )
+
+                // 하단 여백
+                Spacer(modifier = Modifier.height(80.dp))
             }
-            
-            // 하단 여백
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun MainScreenPreview() {
-    SodamdiaryTheme {
-        MainScreen(rememberNavController())
-    }
-}
+// Preview 삭제: 빌드 안정성을 위해 미사용 프리뷰 제거

@@ -100,7 +100,7 @@ fun PhotoInfoChoiceScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SecondaryActionButton(
-                    text = "괜찮아요",
+                    text = "건너뛰기",
                     onClick = {
                         val encodedPath = Uri.encode(decodedPath)
                         navController.navigate("photo_detail/$encodedPath") {
@@ -160,7 +160,19 @@ fun PhotoInfoChoiceScreen(
                             .fillMaxWidth()
                             .semantics { contentDescription = "사용자 정보 입력 필드" },
                         minLines = 3,
-                        maxLines = 5
+                        maxLines = 5,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            disabledTextColor = Color.Black,
+                            cursorColor = Color.Black,
+                            focusedBorderColor = Color.Black,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = Color.Black,
+                            unfocusedLabelColor = Color.Gray,
+                            focusedPlaceholderColor = Color.Gray,
+                            unfocusedPlaceholderColor = Color.Gray
+                        )
                     )
                     
                     // 버튼 영역

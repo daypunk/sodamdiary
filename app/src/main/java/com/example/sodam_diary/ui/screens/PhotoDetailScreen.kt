@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -113,27 +114,15 @@ fun PhotoDetailScreen(
                     val locationData = locationHelper.getCurrentLocation()
                     val captureDate = System.currentTimeMillis()
                     
-                    val result = if (!userInput.isNullOrBlank()) {
-                        // 사용자 입력이 있으면 서버 통신
-                        photoRepository.savePhotoWithEmotion(
-                            photoPath = decodedPath,
-                            userDescription = userInput,
-                            latitude = locationData?.latitude,
-                            longitude = locationData?.longitude,
-                            locationName = locationData?.locationName,
-                            captureDate = captureDate
-                        )
-                    } else {
-                        // 사용자 입력이 없으면 로컬만 저장
-                        photoRepository.savePhotoLocal(
-                            photoPath = decodedPath,
-                            userDescription = null,
-                            latitude = locationData?.latitude,
-                            longitude = locationData?.longitude,
-                            locationName = locationData?.locationName,
-                            captureDate = captureDate
-                        )
-                    }
+                    // 사용자 입력 유무와 관계없이 서버로 전송 (file만 있어도 통신)
+                    val result = photoRepository.savePhotoWithEmotion(
+                        photoPath = decodedPath,
+                        userDescription = userInput,
+                        latitude = locationData?.latitude,
+                        longitude = locationData?.longitude,
+                        locationName = locationData?.locationName,
+                        captureDate = captureDate
+                    )
                     
                     if (result.isSuccess) {
                         // 저장 후 DB에서 다시 조회해서 표시
@@ -152,7 +141,10 @@ fun PhotoDetailScreen(
     }
     
     // 시각장애인용 고대비 디자인 + status bar 대응
-    ScreenLayout {
+    ScreenLayout(
+        showHomeButton = true,
+        onHomeClick = { navController.navigate("main") }
+    ) {
         if (isLoading) {
             // 로딩 화면
             Column(
@@ -208,101 +200,116 @@ fun PhotoDetailScreen(
                 }
             }
         } else {
-            // 사진 상세 정보 화면
+            // 사진 상세 정보 화면 - 재구성
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 상단 여백만 - 타이틀 완전 제거로 통일
-                Spacer(modifier = Modifier.height(80.dp))
-                
-                // 사진 영역
+                // 상단 여백만 - 갤러리와 동일 수준으로 축소
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 상단 정보 영역: 검은 배경 위 흰 텍스트, 화면 절반 높이, 스크롤 가능
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(4f / 3f)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                        .weight(1f)
+                        .padding(horizontal = 16.dp)
                 ) {
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "저장된 사진",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .semantics { contentDescription = "저장된 사진이 표시됩니다" },
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
-                
-                // 사진 정보 영역
-                photoEntity?.let { photo ->
-                    Card(
+                    val state = rememberScrollState()
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White
-                        )
+                            .fillMaxSize()
+                            .verticalScroll(state)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp)
-                        ) {
+                        photoEntity?.let { photo ->
                             val dateLine = formatDateOnly(photo.captureDate)
                             val city = extractCityFromAddress(photo.locationName)
                             val locationLine = city?.let { "${it}에서 찍은 사진이에요" }
                             val descriptionLine = photo.imageDescription ?: "설명 없음"
 
                             val combined = listOfNotNull(dateLine, locationLine, descriptionLine)
-                                .joinToString("\n")
+                                .joinToString("\n\n")
 
                             Text(
                                 text = combined,
                                 fontSize = 18.sp,
-                                color = Color.Black,
-                                modifier = Modifier.semantics { contentDescription = combined }
+                                color = Color.White,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .semantics { contentDescription = combined }
                             )
                         }
                     }
                 }
-                
-                // 하단 버튼 - 완전 통일된 스타일과 기능
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+
+                // 하단 섹션: 매우 진한 회색 배경, 상단 라운드, 전체 너비
+                Surface(
+                    color = Color(0xFF1E1E1E),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 ) {
-                    // 모든 경우에 갤러리로 버튼 (화이트 백그라운드)
-                    Button(
-                        onClick = { 
-                            navController.navigate("gallery") {
-                                popUpTo("main") { inclusive = false }
-                            }
-                        },
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(60.dp)
-                            .semantics { contentDescription = "갤러리로 돌아가기" },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black
-                        ),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                        elevation = ButtonDefaults.buttonElevation(
-                            defaultElevation = 8.dp,
-                            pressedElevation = 4.dp
-                        )
                     ) {
-                        Text(
-                            text = "갤러리로",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
+                        // 사진 (라운드 적용)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                                .aspectRatio(4f / 3f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = "저장된 사진",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                                        .semantics { contentDescription = "저장된 사진이 표시됩니다" },
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
+                        }
+
+                        // 하단 버튼 - 동일 스타일
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    navController.navigate("gallery") {
+                                        popUpTo("main") { inclusive = false }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
+                                    .semantics { contentDescription = "갤러리로 돌아가기" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black
+                                ),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                                elevation = ButtonDefaults.buttonElevation(
+                                    defaultElevation = 8.dp,
+                                    pressedElevation = 4.dp
+                                )
+                            ) {
+                                Text(
+                                    text = "갤러리로",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }

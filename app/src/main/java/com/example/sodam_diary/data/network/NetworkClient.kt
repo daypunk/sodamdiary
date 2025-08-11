@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 object NetworkClient {
     
     // URL
-    private const val BASE_URL = "http://43.202.92.248:8000/"
+    private const val BASE_URL = "http://192.168.45.248:8000/"
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

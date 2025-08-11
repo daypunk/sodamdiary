@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -65,7 +66,8 @@ fun PhotoPreviewScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 if (bitmap != null) {
@@ -74,6 +76,7 @@ fun PhotoPreviewScreen(
                         contentDescription = "촬영된 사진",
                         modifier = Modifier
                             .fillMaxSize()
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
                             .semantics { contentDescription = "촬영된 사진이 표시됩니다" },
                         contentScale = ContentScale.Fit
                     )
