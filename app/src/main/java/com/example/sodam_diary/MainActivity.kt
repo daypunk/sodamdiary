@@ -195,7 +195,7 @@ fun MainScreen(navController: NavHostController) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(top = 120.dp)
-                    .semantics { contentDescription = "소담일기 앱" }
+                    .semantics { contentDescription = "소담일기, 사진을 읽어드릴게요" }
             )
             
             // 중앙 영역: 버튼들과 가이드 텍스트를 한 묶음으로

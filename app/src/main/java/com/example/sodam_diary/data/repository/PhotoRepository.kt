@@ -127,14 +127,14 @@ class PhotoRepository(context: Context) {
             }
             
             // 서버에 전송 (6초 타임아웃로 완화)
-            Log.d("PhotoRepository", "⏱️ 서버 요청 시작 (8초 타임아웃)")
-            val response = withTimeoutOrNull(8000) {
+            Log.d("PhotoRepository", "⏱️ 서버 요청 시작 (15초 타임아웃)")
+            val response = withTimeoutOrNull(15_000) {
                 apiService.analyzePhoto(photoPart, fileInfoRequestBody)
             }
             
             when {
                 response == null -> {
-                    Log.w("PhotoRepository", "⏰ 서버 응답 타임아웃 (8초)")
+                    Log.w("PhotoRepository", "⏰ 서버 응답 타임아웃 (15초)")
                     null
                 }
                 response.isSuccessful -> {
