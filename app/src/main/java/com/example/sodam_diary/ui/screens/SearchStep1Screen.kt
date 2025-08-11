@@ -94,8 +94,8 @@ fun SearchStep1Screen(navController: NavController) {
                 SecondaryActionButton(
                     text = "건너뛰기",
                     onClick = {
-                        // 연도 스킵: placeholder "-" 전달
-                        navController.navigate("search_step2/-")
+                        // 연도 스킵 시 월도 자동 스킵하여 바로 3단계로 이동
+                        navController.navigate("search_step3/-/-")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
