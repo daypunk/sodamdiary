@@ -27,6 +27,9 @@ import com.example.sodam_diary.ui.components.PrimaryActionButton
 import com.example.sodam_diary.ui.components.SecondaryActionButton
 import com.example.sodam_diary.utils.PhotoManager
 import java.io.File
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 
 @Composable
 fun PhotoInfoChoiceScreen(
@@ -47,7 +50,11 @@ fun PhotoInfoChoiceScreen(
     }
     
     // 시각장애인용 고대비 디자인
-    ScreenLayout {
+    val titleFocus = remember { FocusRequester() }
+
+    ScreenLayout(
+        initialFocusRequester = titleFocus
+    ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -72,6 +79,8 @@ fun PhotoInfoChoiceScreen(
                     lineHeight = 48.sp,
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
+                        .focusRequester(titleFocus)
+                        .focusable()
                         .semantics { contentDescription = "사진에 정보를 추가할까요?" }
                 )
                 
@@ -99,6 +108,15 @@ fun PhotoInfoChoiceScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // 하단 버튼: 추가하기 (화이트 백그라운드 + 블랙 텍스트)
+                PrimaryActionButton(
+                    text = "추가하기",
+                    onClick = { showDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "정보 추가하기" }
+                )
+
                 SecondaryActionButton(
                     text = "건너뛰기",
                     onClick = {
@@ -110,15 +128,6 @@ fun PhotoInfoChoiceScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "정보 추가 없이 저장하기" }
-                )
-                
-                // 하단 버튼: 추가하기 (화이트 백그라운드 + 블랙 텍스트)
-                PrimaryActionButton(
-                    text = "추가하기",
-                    onClick = { showDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "정보 추가하기" }
                 )
             }
         }
@@ -158,7 +167,7 @@ fun PhotoInfoChoiceScreen(
                         placeholder = { Text("예: 친구들과 맛있는 점심을 먹었어요") },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .semantics { contentDescription = "사용자 정보 입력 필드" },
+                            .semantics { contentDescription = "텍스트 입력창" },
                         minLines = 3,
                         maxLines = 5,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -180,7 +189,33 @@ fun PhotoInfoChoiceScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        // 취소 버튼 - 배경없는 검은색 텍스트
+                        // 확인 버튼 - 더 넓게 왼쪽 배치
+                        Button(
+                            onClick = { 
+                                val encodedPath = Uri.encode(decodedPath)
+                                navController.navigate("photo_detail/$encodedPath?userInput=${Uri.encode(userInput)}") {
+                                    popUpTo("main") { inclusive = false }
+                                }
+                                showDialog = false
+                            },
+                            modifier = Modifier
+                                .weight(1.6f)
+                                .height(50.dp)
+                                .semantics { contentDescription = "확인" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "확인",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // 취소 버튼 - 오른쪽 배치
                         TextButton(
                             onClick = { 
                                 showDialog = false
@@ -196,33 +231,6 @@ fun PhotoInfoChoiceScreen(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
-                            )
-                        }
-                        
-                        // 확인 버튼 - 크기 증가
-                        Button(
-                            onClick = { 
-                                // userDescription과 함께 결과 화면으로
-                                val encodedPath = Uri.encode(decodedPath)
-                                navController.navigate("photo_detail/$encodedPath?userInput=${Uri.encode(userInput)}") {
-                                    popUpTo("main") { inclusive = false }
-                                }
-                                showDialog = false
-                            },
-                            modifier = Modifier
-                                .weight(1.5f) // 확인 버튼을 더 넓게
-                                .height(50.dp) // 높이 증가
-                                .semantics { contentDescription = "확인" },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "확인",
-                                fontSize = 20.sp, // 텍스트 크기 증가
-                                fontWeight = FontWeight.Bold
                             )
                         }
                     }

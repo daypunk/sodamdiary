@@ -17,6 +17,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -141,16 +145,21 @@ fun PhotoDetailScreen(
     }
     
     // 시각장애인용 고대비 디자인 + status bar 대응
+    val descriptionFocus = remember { FocusRequester() }
+
     ScreenLayout(
         showHomeButton = true,
-        onHomeClick = { navController.navigate("main") }
+        onHomeClick = { navController.navigate("main") },
+        initialFocusRequester = descriptionFocus,
+        contentFocusLabel = "사진 설명"
     ) {
         if (isLoading) {
             // 로딩 화면
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(32.dp)
+                    .semantics { traversalIndex = 0f },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -173,7 +182,8 @@ fun PhotoDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp),
+                    .padding(32.dp)
+                    .semantics { traversalIndex = 0f },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -203,7 +213,8 @@ fun PhotoDetailScreen(
             // 사진 상세 정보 화면 - 재구성
             Column(
                 modifier = Modifier
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .semantics { traversalIndex = 0f },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // 상단 여백만 - 갤러리와 동일 수준으로 축소
@@ -237,6 +248,8 @@ fun PhotoDetailScreen(
                                 color = Color.White,
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .focusRequester(descriptionFocus)
+                                    .focusable()
                                     .semantics { contentDescription = combined }
                             )
                         }
@@ -248,9 +261,10 @@ fun PhotoDetailScreen(
                     color = Color(0xFF1E1E1E),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
                 ) {
-                    Column(
+                        Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                                .semantics { traversalIndex = 1f }
                     ) {
                         // 사진 (라운드 적용)
                         Box(

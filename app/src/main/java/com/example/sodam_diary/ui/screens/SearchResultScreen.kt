@@ -179,7 +179,7 @@ fun SearchResultScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
-                            contentPadding = PaddingValues(top = 80.dp, bottom = 100.dp)
+                            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
                         ) {
                             // 결과 개수 표시
                             item {

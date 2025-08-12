@@ -11,6 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,9 +29,13 @@ fun SearchStep1Screen(navController: NavController) {
     val years = listOf("2025", "2024", "2023")
     
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
+    val titleFocus = remember { FocusRequester() }
+
     ScreenLayout(
         showBackButton = true,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        initialFocusRequester = titleFocus,
+        contentFocusLabel = "년도를 알려주세요"
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -43,12 +51,14 @@ fun SearchStep1Screen(navController: NavController) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
+                    .focusRequester(titleFocus)
+                    .focusable()
                     .semantics { contentDescription = "년도를 알려주세요" }
             )
             
             // 중앙 컨텐츠 - 년도 버튼들
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).semantics { traversalIndex = 0f },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -87,7 +97,8 @@ fun SearchStep1Screen(navController: NavController) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 1f },
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 건너뛰기 버튼 (회색 배경 + 흰 텍스트)

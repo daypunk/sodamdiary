@@ -100,17 +100,6 @@ fun PhotoPreviewScreen(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                SecondaryActionButton(
-                    text = "다시 찍기",
-                    onClick = {
-                        imageFile.delete()
-                        navController.popBackStack()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "다시 찍기" }
-                )
-                
                 // 하단 버튼: 사진 사용 (화이트 백그라운드 + 블랙 텍스트)
                 PrimaryActionButton(
                     text = "사진 사용",
@@ -121,6 +110,17 @@ fun PhotoPreviewScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .semantics { contentDescription = "사진 사용하기" }
+                )
+
+                SecondaryActionButton(
+                    text = "다시 찍기",
+                    onClick = {
+                        imageFile.delete()
+                        navController.popBackStack()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "다시 찍기" }
                 )
             }
         }

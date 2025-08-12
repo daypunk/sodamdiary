@@ -20,6 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -142,11 +146,19 @@ fun CameraContent(
     val executor = remember { Executors.newSingleThreadExecutor() }
     var cameraError by remember { mutableStateOf<String?>(null) }
     
+    val captureButtonFocus = remember { FocusRequester() }
+
     ScreenLayout(
         showHomeButton = true,
-        onHomeClick = { navController.popBackStack() }
+        onHomeClick = { navController.popBackStack() },
+        initialFocusRequester = captureButtonFocus,
+        contentFocusLabel = "카메라 미리보기"
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .semantics { traversalIndex = 0f }
+        ) {
         if (cameraError != null) {
             // 카메라 에러 화면
             Column(
@@ -229,7 +241,8 @@ fun CameraContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.7f))
-                .padding(24.dp),
+                .padding(24.dp)
+                .semantics { traversalIndex = 1f },
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 촬영 버튼 (화이트 백그라운드 + 블랙 텍스트)
@@ -255,6 +268,8 @@ fun CameraContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
+                    .focusRequester(captureButtonFocus)
+                    .focusable()
                     .semantics { contentDescription = "사진 촬영하기" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,

@@ -27,6 +27,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -78,6 +82,8 @@ fun GalleryScreen(navController: NavController) {
     }
     
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 홈 버튼
+    val firstMonthTitleFocus = remember { FocusRequester() }
+
     ScreenLayout(
         showHomeButton = true,
         onHomeClick = { navController.navigate("main") },
@@ -91,10 +97,13 @@ fun GalleryScreen(navController: NavController) {
                 // 선택 삭제 모드 진입
                 selectionMode = true
             }
-        }
+        },
+        initialFocusRequester = firstMonthTitleFocus,
+        contentFocusLabel = "사진 목록",
+        // 하단 버튼 영역보다 컨텐츠 영역이 먼저 읽히도록 기본 설정 유지
     ) {
             // 컨텐츠 영역 - 타이틀 제거하고 상단 여백만
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f).semantics { traversalIndex = 0f }) {
                 when {
                     isLoading -> {
                         // 로딩 화면
@@ -197,6 +206,11 @@ fun GalleryScreen(navController: NavController) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 16.dp)
+                                        .then(
+                                            if (groupedPhotos.firstOrNull()?.first == monthYear)
+                                                Modifier.focusRequester(firstMonthTitleFocus).focusable()
+                                            else Modifier
+                                        )
                                         .semantics { contentDescription = "$monthYear 사진들" }
                                 )
                                 
@@ -253,7 +267,8 @@ fun GalleryScreen(navController: NavController) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 1f },
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 if (selectionMode) {
@@ -305,7 +320,7 @@ fun GalleryScreen(navController: NavController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp)
-                            .semantics { contentDescription = "사진 검색하기" },
+                            .semantics { contentDescription = "검색하기, 간단한 정보 선택으로 원하는 사진을 찾을 수 있어요" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor = Color.Black
@@ -349,7 +364,7 @@ private fun PhotoThumbnail(
             .background(Color.Gray.copy(alpha = 0.3f))
             .clickable { onClick() }
             .semantics { 
-                contentDescription = "사진 썸네일, 촬영일: ${formatThumbnailDate(photo.captureDate)}"
+                contentDescription = "사진보기 버튼, ${formatThumbnailDate(photo.captureDate)}에 찍은 사진이에요"
             },
         contentAlignment = Alignment.Center
     ) {

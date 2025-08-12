@@ -8,12 +8,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import kotlinx.coroutines.delay
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -38,111 +47,149 @@ fun ScreenLayout(
     onActionClick: (() -> Unit)? = null,
     onHomeClick: (() -> Unit)? = null,
     onBackClick: (() -> Unit)? = null,
+    initialFocusRequester: FocusRequester? = null,
+    initialFocusDelayMs: Long = 700,
+    suppressHeaderUntilFocused: Boolean = true,
+    contentFocusLabel: String? = "화면의 주요 내용",
     screenAnnouncement: String? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val view = LocalView.current
-    // 화면 진입 시 목적/사용법을 안내
-    if (!screenAnnouncement.isNullOrBlank()) {
-        androidx.compose.runtime.LaunchedEffect(screenAnnouncement) {
-            // 화면 목적 안내를 즉시 발표
-            view.announceForAccessibility(screenAnnouncement!!)
+    val contentFocusRequester = remember { FocusRequester() }
+    var suppressHeaderA11y by remember { mutableStateOf(suppressHeaderUntilFocused) }
+    // 화면 진입 시 안내 후 메인 컨텐츠로 초기 포커스 강제 이동
+    androidx.compose.runtime.LaunchedEffect(screenAnnouncement, initialFocusRequester) {
+        val announcement = screenAnnouncement?.takeIf { it.isNotBlank() }
+        if (announcement != null) {
+            view.announceForAccessibility(announcement)
+            // TalkBack 안내 읽기 직후 포커스 적용을 위해 약간 지연
+            delay(initialFocusDelayMs)
+        } else {
+            // 안내가 없는 경우에도 렌더링 안정화를 위해 소폭 지연
+            delay(100)
         }
+        // 페이지가 제공한 명시적 초기 포커스 대상이 있으면 우선 사용
+        val focused = if (initialFocusRequester != null) {
+            try {
+                initialFocusRequester.requestFocus()
+                true
+            } catch (_: IllegalStateException) {
+                false
+            }
+        } else false
+
+        if (!focused) {
+            // 안전한 기본 컨텐츠 포커스
+            contentFocusRequester.requestFocus()
+        }
+        // 포커스 적용 이후 헤더를 조금 더 늦게 활성화하여 초기 포커스가 헤더로 이동하는 것을 방지
+        delay(500)
+        suppressHeaderA11y = false
     }
-    // 안전 영역 중 하단만 자동 패딩 적용 (상단은 우리가 검은 배경으로 직접 그려줌)
-    Column(
+    // 안전 영역 중 하단만 자동 패딩 적용 + 전체 배경
+    Box(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
             .background(Color.Black)
     ) {
-        // Status bar 영역을 검정으로 채워서 흰 상태바와 겹침 문제 방지
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsTopHeight(WindowInsets.statusBars)
-                .background(Color.Black)
-                .clearAndSetSemantics { }
-        )
-        
-        // 헤더 영역 (status bar 아래에 별도로)
-        if (showHomeButton || showBackButton || actionIcon != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(Color.Black)
-                    .padding(horizontal = 8.dp)
-                    .semantics {
-                        traversalIndex = 1f // 메인 컨텐츠보다 뒤에 읽히도록 설정
-                    },
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                when {
-                    showHomeButton && onHomeClick != null -> {
-                        // 홈 아이콘 버튼
-                        IconButton(
-                            onClick = onHomeClick,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .semantics { contentDescription = "홈으로 돌아가기" }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Home,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp) // 아이콘 크기 증가
-                            )
-                        }
-                    }
-                    showBackButton && onBackClick != null -> {
-                        // 뒤로가기 화살표 아이콘 버튼
-                        IconButton(
-                            onClick = onBackClick,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .semantics { contentDescription = "이전으로 돌아가기" }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp) // 아이콘 크기 증가
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                if (actionIcon != null && onActionClick != null) {
-                    IconButton(
-                        onClick = onActionClick,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .semantics { contentDescription = "액션" }
-                    ) {
-                        Icon(
-                            imageVector = actionIcon,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-        }
-        
-        // 메인 컨텐츠 (화면에서 가장 먼저 읽히도록 그룹/순서 지정)
+        // 메인 컨텐츠 (먼저 선언하여 접근성 순서상 먼저 읽히도록)
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = if (showHomeButton || showBackButton || actionIcon != null) 56.dp else 0.dp)
+                .focusRequester(contentFocusRequester)
+                .focusable()
                 .semantics {
                     traversalIndex = 0f
+                    if (!contentFocusLabel.isNullOrBlank()) {
+                        contentDescription = contentFocusLabel
+                    }
                 }
         ) {
             content()
         }
 
-        // 별도 하단 Spacer 제거 (safeDrawing Bottom이 처리)
+        // 헤더와 상태바 오버레이 (시각적 상단 고정)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black)
+        ) {
+            // Status bar 영역을 검은색으로 채움 (접근성 제외)
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsTopHeight(WindowInsets.statusBars)
+                    .background(Color.Black)
+                    .clearAndSetSemantics { }
+            )
+            // 헤더 영역
+            if (showHomeButton || showBackButton || actionIcon != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(Color.Black)
+                        .padding(horizontal = 8.dp)
+                        .then(
+                            if (suppressHeaderA11y) Modifier.clearAndSetSemantics { }
+                        else Modifier.semantics { traversalIndex = 2f }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when {
+                        showHomeButton && onHomeClick != null -> {
+                            IconButton(
+                                onClick = onHomeClick,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .semantics { contentDescription = "홈으로 돌아가기" }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        showBackButton && onBackClick != null -> {
+                            IconButton(
+                                onClick = onBackClick,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .semantics { contentDescription = "이전으로 돌아가기" }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (actionIcon != null && onActionClick != null) {
+                        IconButton(
+                            onClick = onActionClick,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .semantics { contentDescription = "액션" }
+                        ) {
+                            Icon(
+                                imageVector = actionIcon,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -209,7 +256,7 @@ fun SecondaryActionButton(
             contentColor = Color.White
         ),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-        border = ButtonDefaults.outlinedButtonBorder,
+        border = BorderStroke(1.dp, Color.White),
     ) {
         Text(text = text, fontSize = 22.sp, color = Color.White)
     }

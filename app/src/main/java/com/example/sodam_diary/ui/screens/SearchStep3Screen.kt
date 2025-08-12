@@ -12,7 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,9 +36,12 @@ fun SearchStep3Screen(
     var locationInput by remember { mutableStateOf("") }
     
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
+    val titleFocus = remember { FocusRequester() }
+
     ScreenLayout(
         showBackButton = true,
         onBackClick = { navController.popBackStack() },
+        initialFocusRequester = titleFocus,
         screenAnnouncement = "장소 입력 화면입니다. 입력창에 도시나 구 단위를 입력하고 입력 버튼을 누르세요. 건너뛰기도 가능합니다."
     ) {
         Column(
@@ -53,13 +60,15 @@ fun SearchStep3Screen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
+                    .focusRequester(titleFocus)
+                    .focusable()
                     .semantics { contentDescription = "어디서 찍었나요?" }
             )
             
             // 중앙 컨텐츠 - 텍스트 입력
             Column(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f).semantics { traversalIndex = 0f }
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -96,7 +105,7 @@ fun SearchStep3Screen(
                                 onValueChange = { locationInput = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .semantics { contentDescription = "장소 입력 필드" },
+                                    .semantics { contentDescription = "장소 입력창" },
                                 textStyle = androidx.compose.ui.text.TextStyle(
                                     color = Color.White,
                                     fontSize = 24.sp
@@ -163,7 +172,8 @@ fun SearchStep3Screen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 1f },
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SecondaryActionButton(
