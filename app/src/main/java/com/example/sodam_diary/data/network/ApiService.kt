@@ -28,14 +28,14 @@ interface ApiService {
  * 서버 응답 데이터 클래스
  */
 data class ApiResponse(
-    val status: String,
-    val message: String,
-    val data: ResponseData?
-)
-
-/**
- * 응답 데이터 내부 구조
- */
-data class ResponseData(
-    val refined_caption: String
+    val file: String?,
+    val refined_caption: String?,
+    val blip_text: String?,
+    val clip_text: String?,
+    val file_info: String?,
+    val location: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val id: Int?,
+    val created_at: String?
 )

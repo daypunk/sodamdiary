@@ -138,7 +138,7 @@ class PhotoRepository(context: Context) {
                     null
                 }
                 response.isSuccessful -> {
-                    val description = response.body()?.data?.refined_caption
+                    val description = response.body()?.refined_caption
                     Log.d("PhotoRepository", "✅ 서버 응답 성공: $description")
                     description
                 }

@@ -166,12 +166,12 @@ fun PhotoDetailScreen(
                 CircularProgressIndicator(
                     color = Color.White,
                     modifier = Modifier.semantics { 
-                        contentDescription = "사진을 저장하고 있습니다" 
+                        contentDescription = "일기를 적고 있어요"
                     }
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "사진을 저장하고 있습니다...",
+                    text = "일기를 적고 있어요",
                     fontSize = 18.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center
