@@ -31,7 +31,9 @@ import com.example.sodam_diary.data.entity.PhotoEntity
 import com.example.sodam_diary.data.repository.PhotoRepository
 import com.example.sodam_diary.utils.LocationHelper
 import com.example.sodam_diary.utils.PhotoManager
+import com.example.sodam_diary.utils.VoicePlayer
 import com.example.sodam_diary.ui.components.ScreenLayout
+import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,18 +48,41 @@ import java.util.*
 fun PhotoDetailScreen(
     navController: NavController,
     imagePath: String,
-    userInput: String? = null
+    userInput: String? = null,
+    voicePath: String? = null
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val decodedPath = Uri.decode(imagePath)
+    val decodedVoicePath = voicePath?.let { Uri.decode(it) }
     val imageFile = File(decodedPath)
     val photoManager = remember { PhotoManager(context) }
     val locationHelper = remember { LocationHelper(context) }
+    val voicePlayer = remember { VoicePlayer(context) }
     val coroutineScope = rememberCoroutineScope()
     
     var isLoading by remember { mutableStateOf(true) }
     var photoEntity by remember { mutableStateOf<PhotoEntity?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isPlayingVoice by remember { mutableStateOf(false) }
+    
+    // VoicePlayer 콜백 설정
+    DisposableEffect(Unit) {
+        voicePlayer.setCallbacks(
+            onComplete = {
+                isPlayingVoice = false
+                view.announceForAccessibility("재생이 완료되었습니다")
+            },
+            onError = { error ->
+                isPlayingVoice = false
+                view.announceForAccessibility(error)
+            }
+        )
+        
+        onDispose {
+            voicePlayer.release()
+        }
+    }
     
     // 이미지 로드
     val bitmap = remember(decodedPath) {
@@ -122,6 +147,7 @@ fun PhotoDetailScreen(
                     val result = photoRepository.savePhotoWithEmotion(
                         photoPath = decodedPath,
                         userDescription = userInput,
+                        userVoicePath = decodedVoicePath,
                         latitude = locationData?.latitude,
                         longitude = locationData?.longitude,
                         locationName = locationData?.locationName,
@@ -296,6 +322,53 @@ fun PhotoDetailScreen(
                                 .padding(24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            // 내 목소리 듣기 버튼 (조건부 렌더링)
+                            if (!photoEntity?.userVoicePath.isNullOrBlank()) {
+                                Button(
+                                    onClick = {
+                                        val voicePathToPlay = photoEntity!!.userVoicePath!!
+                                        if (isPlayingVoice) {
+                                            voicePlayer.stopVoice()
+                                            isPlayingVoice = false
+                                            view.announceForAccessibility("재생을 중지했습니다")
+                                        } else {
+                                            val success = voicePlayer.playVoice(voicePathToPlay)
+                                            if (success) {
+                                                isPlayingVoice = true
+                                                view.announceForAccessibility("음성을 재생합니다")
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(60.dp)
+                                        .semantics { 
+                                            contentDescription = if (isPlayingVoice) {
+                                                "재생 중지하기"
+                                            } else {
+                                                "내 목소리 듣기, 사진을 찍을 때 녹음한 음성을 들을 수 있어요"
+                                            }
+                                        },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50),
+                                        contentColor = Color.White
+                                    ),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                                    elevation = ButtonDefaults.buttonElevation(
+                                        defaultElevation = 8.dp,
+                                        pressedElevation = 4.dp
+                                    )
+                                ) {
+                                    Text(
+                                        text = if (isPlayingVoice) "⏹️ 재생 중지" else "🎤 내 목소리 듣기",
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                            
+                            // 갤러리로 버튼
                             Button(
                                 onClick = {
                                     navController.navigate("gallery") {

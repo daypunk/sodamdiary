@@ -13,7 +13,7 @@ import com.example.sodam_diary.data.entity.PhotoEntity
  */
 @Database(
     entities = [PhotoEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,9 +28,9 @@ abstract class AppDatabase : RoomDatabase() {
          * 버전 1 → 2: userDescription을 nullable로 변경
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
+            override fun migrate(db: SupportSQLiteDatabase) {
                 // userDescription 컬럼을 nullable로 변경하기 위해 테이블 재생성
-                database.execSQL("""
+                db.execSQL("""
                     CREATE TABLE photos_new (
                         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                         photoPath TEXT NOT NULL,
@@ -44,7 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
                 """)
                 
                 // 기존 데이터 복사 (userDescription이 빈 문자열인 경우 NULL로 변환)
-                database.execSQL("""
+                db.execSQL("""
                     INSERT INTO photos_new (id, photoPath, captureDate, latitude, longitude, locationName, imageDescription, userDescription)
                     SELECT id, photoPath, captureDate, latitude, longitude, locationName, imageDescription, 
                            CASE WHEN userDescription = '' THEN NULL ELSE userDescription END
@@ -52,8 +52,20 @@ abstract class AppDatabase : RoomDatabase() {
                 """)
                 
                 // 기존 테이블 삭제하고 새 테이블로 이름 변경
-                database.execSQL("DROP TABLE photos")
-                database.execSQL("ALTER TABLE photos_new RENAME TO photos")
+                db.execSQL("DROP TABLE photos")
+                db.execSQL("ALTER TABLE photos_new RENAME TO photos")
+            }
+        }
+        
+        /**
+         * 버전 2 → 3: userVoicePath, caption, tags 컬럼 추가
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 새로운 컬럼 추가 (모두 nullable)
+                db.execSQL("ALTER TABLE photos ADD COLUMN userVoicePath TEXT")
+                db.execSQL("ALTER TABLE photos ADD COLUMN caption TEXT")
+                db.execSQL("ALTER TABLE photos ADD COLUMN tags TEXT")
             }
         }
         
@@ -67,7 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "sodam_diary_database"
                 )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
                 INSTANCE = instance
                 instance

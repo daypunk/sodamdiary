@@ -1,9 +1,11 @@
 package com.example.sodam_diary.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.compose.foundation.Image
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,9 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -21,11 +22,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.example.sodam_diary.data.repository.PhotoRepository
 import com.example.sodam_diary.ui.components.ScreenLayout
 import com.example.sodam_diary.ui.components.PrimaryActionButton
 import com.example.sodam_diary.ui.components.SecondaryActionButton
-import com.example.sodam_diary.utils.PhotoManager
+import com.example.sodam_diary.utils.VoiceRecorder
+import kotlinx.coroutines.launch
 import java.io.File
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -37,16 +41,87 @@ fun PhotoInfoChoiceScreen(
     imagePath: String
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val decodedPath = Uri.decode(imagePath)
-    val imageFile = File(decodedPath)
-    val photoManager = remember { PhotoManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    val photoRepository = remember { PhotoRepository(context) }
     
+    // 상태 관리
     var showDialog by remember { mutableStateOf(false) }
-    var userInput by remember { mutableStateOf("") }
+    var isRecording by remember { mutableStateOf(false) }
+    var transcribedText by remember { mutableStateOf("") }
+    var isProcessing by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // 이미지 로드
-    val bitmap = remember(decodedPath) {
-        photoManager.loadRotatedBitmap(imageFile)
+    // 백그라운드 API 상태
+    var captionResult by remember { mutableStateOf<String?>(null) }
+    var isAnalyzing by remember { mutableStateOf(false) }
+    
+    // VoiceRecorder
+    val voiceRecorder = remember { VoiceRecorder(context) }
+    var currentVoicePath by remember { mutableStateOf<String?>(null) }
+    
+    // 마이크 권한 체크
+    val micPermissionGranted = remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == 
+            PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            micPermissionGranted.value = granted
+            if (!granted) {
+                errorMessage = "마이크 권한이 필요합니다"
+                view.announceForAccessibility("마이크 권한이 필요합니다")
+            }
+        }
+    )
+    
+    // 화면 진입 시 백그라운드에서 analyze API 호출
+    LaunchedEffect(decodedPath) {
+        isAnalyzing = true
+        coroutineScope.launch {
+            try {
+                val photoFile = File(decodedPath)
+                if (photoFile.exists()) {
+                    // PhotoRepository의 내부 메서드를 호출할 수 없으므로 임시로 처리
+                    // 실제로는 PhotoRepository에 public 메서드 추가 필요
+                    captionResult = "분석 완료" // TODO: 실제 API 호출
+                }
+            } catch (e: Exception) {
+                captionResult = null
+            } finally {
+                isAnalyzing = false
+            }
+        }
+    }
+    
+    // VoiceRecorder 콜백 설정
+    DisposableEffect(Unit) {
+        voiceRecorder.setCallbacks(
+            onTranscription = { text ->
+                transcribedText = text
+                isRecording = false
+                view.announceForAccessibility("음성 인식이 완료되었습니다. $text")
+            },
+            onError = { error ->
+                errorMessage = error
+                isRecording = false
+                view.announceForAccessibility(error)
+            },
+            onReady = {
+                view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
+            }
+        )
+        
+        onDispose {
+            if (isRecording) {
+                voiceRecorder.cancelRecording()
+            }
+        }
     }
     
     // 시각장애인용 고대비 디자인
@@ -101,22 +176,29 @@ fun PhotoInfoChoiceScreen(
                 )
             }
             
-            // 하단 버튼 영역 - 다른 화면들과 동일한 하단 위치
+            // 하단 버튼 영역
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 하단 버튼: 추가하기 (화이트 백그라운드 + 블랙 텍스트)
+                // 추가하기 버튼
                 PrimaryActionButton(
                     text = "추가하기",
-                    onClick = { showDialog = true },
+                    onClick = { 
+                        if (micPermissionGranted.value) {
+                            showDialog = true
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "정보 추가하기" }
+                        .semantics { contentDescription = "음성으로 정보 추가하기" }
                 )
 
+                // 건너뛰기 버튼
                 SecondaryActionButton(
                     text = "건너뛰기",
                     onClick = {
@@ -133,105 +215,269 @@ fun PhotoInfoChoiceScreen(
         }
     }
     
-    // 정보 입력 다이얼로그
+    // STT 녹음 다이얼로그
     if (showDialog) {
-        Dialog(onDismissRequest = { showDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.95f) // 폭을 더 넓게
-                    .padding(8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // 다이얼로그 타이틀
-                    Text(
-                        text = "정보 추가하기",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+        VoiceRecordingDialog(
+            isRecording = isRecording,
+            transcribedText = transcribedText,
+            isProcessing = isProcessing,
+            errorMessage = errorMessage,
+            onStartRecording = {
+                if (!isRecording) {
+                    errorMessage = null
+                    transcribedText = ""
+                    currentVoicePath = voiceRecorder.startRecording()
+                    isRecording = true
+                }
+            },
+            onStopRecording = {
+                if (isRecording) {
+                    voiceRecorder.stopRecording()
+                    isRecording = false
+                }
+            },
+            onConfirm = {
+                if (transcribedText.isNotBlank()) {
+                    isProcessing = true
+                    view.announceForAccessibility("일기를 생성하고 있습니다")
                     
-                    // 텍스트 입력 필드
-                    OutlinedTextField(
-                        value = userInput,
-                        onValueChange = { userInput = it },
-                        label = { Text("상황이나 감정을 입력해주세요") },
-                        placeholder = { Text("예: 친구들과 맛있는 점심을 먹었어요") },
+                    coroutineScope.launch {
+                        try {
+                            // TODO: PhotoRepository에 public API 메서드 추가 필요
+                            // 현재는 네비게이션만 처리
+                            val encodedPath = Uri.encode(decodedPath)
+                            val encodedInput = Uri.encode(transcribedText)
+                            navController.navigate("photo_detail/$encodedPath?userInput=$encodedInput&voicePath=${Uri.encode(currentVoicePath ?: "")}") {
+                                popUpTo("main") { inclusive = false }
+                            }
+                        } catch (e: Exception) {
+                            errorMessage = "일기 생성에 실패했습니다"
+                            view.announceForAccessibility("일기 생성에 실패했습니다")
+                        } finally {
+                            isProcessing = false
+                        }
+                    }
+                }
+            },
+            onCancel = {
+                if (isRecording) {
+                    voiceRecorder.cancelRecording()
+                    isRecording = false
+                }
+                showDialog = false
+                transcribedText = ""
+                errorMessage = null
+                currentVoicePath = null
+            },
+            onRetry = {
+                errorMessage = null
+                transcribedText = ""
+            }
+        )
+    }
+}
+
+@Composable
+private fun VoiceRecordingDialog(
+    isRecording: Boolean,
+    transcribedText: String,
+    isProcessing: Boolean,
+    errorMessage: String?,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onRetry: () -> Unit
+) {
+    val view = LocalView.current
+    
+    Dialog(onDismissRequest = { if (!isRecording && !isProcessing) onCancel() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 다이얼로그 타이틀
+                Text(
+                    text = "음성으로 추가하기",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center
+                )
+                
+                // 상태에 따른 안내 메시지
+                when {
+                    isProcessing -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "일기를 생성하고 있어요...",
+                            fontSize = 16.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    errorMessage != null -> {
+                        Text(
+                            text = errorMessage,
+                            fontSize = 16.sp,
+                            color = Color.Red,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                    transcribedText.isNotBlank() -> {
+                        Text(
+                            text = "인식된 내용:",
+                            fontSize = 14.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = transcribedText,
+                            fontSize = 18.sp,
+                            color = Color.Black,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
+                                .padding(16.dp)
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = "버튼을 눌러 말씀해주세요",
+                            fontSize = 16.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                
+                // STT 버튼 (토글형)
+                if (!isProcessing && errorMessage == null) {
+                    Button(
+                        onClick = {
+                            if (isRecording) {
+                                onStopRecording()
+                            } else if (transcribedText.isBlank()) {
+                                onStartRecording()
+                            }
+                        },
+                        enabled = transcribedText.isBlank(),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .semantics { contentDescription = "텍스트 입력창" },
-                        minLines = 3,
-                        maxLines = 5,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            disabledTextColor = Color.Black,
-                            cursorColor = Color.Black,
-                            focusedBorderColor = Color.Black,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedLabelColor = Color.Black,
-                            unfocusedLabelColor = Color.Gray,
-                            focusedPlaceholderColor = Color.Gray,
-                            unfocusedPlaceholderColor = Color.Gray
-                        )
-                    )
-                    
-                    // 버튼 영역
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // 확인 버튼 - 더 넓게 왼쪽 배치
-                        Button(
-                            onClick = { 
-                                val encodedPath = Uri.encode(decodedPath)
-                                navController.navigate("photo_detail/$encodedPath?userInput=${Uri.encode(userInput)}") {
-                                    popUpTo("main") { inclusive = false }
+                            .height(64.dp)
+                            .semantics {
+                                contentDescription = if (isRecording) {
+                                    "녹음 중지하기, 말씀이 끝나면 눌러주세요"
+                                } else {
+                                    "녹음 시작하기, 말씀하시면 바로 녹음하고 글자로 바꿔드려요"
                                 }
-                                showDialog = false
                             },
-                            modifier = Modifier
-                                .weight(1.6f)
-                                .height(50.dp)
-                                .semantics { contentDescription = "확인" },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "확인",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isRecording) Color.Red else Color.Black,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = if (isRecording) "🔴 녹음 중지" else "🎤 녹음 시작",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                
+                // 버튼 영역
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    when {
+                        isProcessing -> {
+                            // 처리 중일 때는 버튼 없음
                         }
-
-                        // 취소 버튼 - 오른쪽 배치
-                        TextButton(
-                            onClick = { 
-                                showDialog = false
-                                userInput = ""
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp)
-                                .semantics { contentDescription = "취소" }
-                        ) {
-                            Text(
-                                text = "취소",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
+                        errorMessage != null -> {
+                            // 오류 발생 시: 다시 시도, 취소
+                            Button(
+                                onClick = onRetry,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp)
+                                    .semantics { contentDescription = "다시 시도하기" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Black,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("다시 시도", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            TextButton(
+                                onClick = onCancel,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp)
+                                    .semantics { contentDescription = "취소하기" }
+                            ) {
+                                Text("취소", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
+                        }
+                        transcribedText.isNotBlank() -> {
+                            // 전사 완료 시: 확인, 취소
+                            Button(
+                                onClick = {
+                                    view.announceForAccessibility("일기를 생성합니다")
+                                    onConfirm()
+                                },
+                                modifier = Modifier
+                                    .weight(1.6f)
+                                    .height(50.dp)
+                                    .semantics { contentDescription = "확인, 일기 생성하기" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.Black,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("확인", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            TextButton(
+                                onClick = onCancel,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(50.dp)
+                                    .semantics { contentDescription = "취소하기" }
+                            ) {
+                                Text("취소", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
+                        }
+                        else -> {
+                            // 대기 중: 취소만
+                            TextButton(
+                                onClick = onCancel,
+                                enabled = !isRecording,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(50.dp)
+                                    .semantics { contentDescription = "취소하기" }
+                            ) {
+                                Text("취소", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
                         }
                     }
                 }
