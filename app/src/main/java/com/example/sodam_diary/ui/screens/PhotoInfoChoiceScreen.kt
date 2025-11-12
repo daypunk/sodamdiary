@@ -53,10 +53,12 @@ fun PhotoInfoChoiceScreen(
     var transcribedText by remember { mutableStateOf("") }
     var isProcessing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isGeneratingDiary by remember { mutableStateOf(false) } // 건너뛰기 버튼용 로딩 상태
     
     // 백그라운드 API 상태
     var captionResult by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
+    var isWaitingForAnalyze by remember { mutableStateOf(false) } // analyze 대기 상태
     
     // VoiceRecorder
     val voiceRecorder = remember { VoiceRecorder(context) }
@@ -133,6 +135,34 @@ fun PhotoInfoChoiceScreen(
     ScreenLayout(
         initialFocusRequester = titleFocus
     ) {
+        if (isGeneratingDiary) {
+            // 일기 생성 중 로딩 화면
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp)
+                    .semantics { traversalIndex = 0f },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .semantics { 
+                            contentDescription = "일기를 적고 있어요"
+                        }
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "일기를 적고 있어요",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -163,32 +193,6 @@ fun PhotoInfoChoiceScreen(
                 )
                 
                 Spacer(modifier = Modifier.height(32.dp))
-                
-                // 분석 중 로딩 표시
-                if (isAnalyzing) {
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = 32.dp, vertical = 16.dp)
-                            .semantics { 
-                                contentDescription = "사진을 분석하고 있어요. 잠시만 기다려주세요" 
-                            },
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "사진을 분석하고 있어요...",
-                            fontSize = 16.sp,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
                 
                 // 본문 설명
                 Text(
@@ -231,14 +235,26 @@ fun PhotoInfoChoiceScreen(
                 SecondaryActionButton(
                     text = "건너뛰기",
                     onClick = {
+                        // 로딩 상태로 전환
+                        isGeneratingDiary = true
+                        
                         coroutineScope.launch {
                             try {
-                                view.announceForAccessibility("사진을 저장하고 있습니다")
+                                // 1. analyze 완료 대기
+                                if (isAnalyzing) {
+                                    view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                                    // analyze가 완료될 때까지 대기
+                                    while (isAnalyzing) {
+                                        kotlinx.coroutines.delay(100)
+                                    }
+                                }
                                 
-                                // 위치 정보 가져오기
+                                view.announceForAccessibility("일기를 적고 있어요")
+                                
+                                // 2. 위치 정보 가져오기
                                 val locationData = locationHelper.getCurrentLocation()
                                 
-                                // generate API 호출 (userInput은 null)
+                                // 3. generate API 호출 (userInput은 null)
                                 val diaryResult = if (captionResult != null) {
                                     photoRepository.generateDiaryWithLLM(
                                         userInput = null,  // 사용자 입력 없음
@@ -251,7 +267,7 @@ fun PhotoInfoChoiceScreen(
                                     null
                                 }
                                 
-                                // DB에 저장
+                                // 4. DB에 저장
                                 val result = photoRepository.savePhotoLocal(
                                     photoPath = decodedPath,
                                     userDescription = null,
@@ -266,13 +282,18 @@ fun PhotoInfoChoiceScreen(
                                 )
                                 
                                 if (result.isSuccess) {
-                                    val encodedPath = Uri.encode(decodedPath)
-                                    navController.navigate("photo_detail/$encodedPath") {
-                                        popUpTo("main") { inclusive = false }
+                                    view.announceForAccessibility("일기가 저장되었습니다")
+                        val encodedPath = Uri.encode(decodedPath)
+                        navController.navigate("photo_detail/$encodedPath") {
+                            popUpTo("main") { inclusive = false }
                                     }
+                                } else {
+                                    view.announceForAccessibility("사진 저장에 실패했습니다")
+                                    isGeneratingDiary = false
                                 }
                             } catch (e: Exception) {
-                                view.announceForAccessibility("사진 저장에 실패했습니다")
+                                view.announceForAccessibility("일기 생성에 실패했습니다")
+                                isGeneratingDiary = false
                             }
                         }
                     },
@@ -282,6 +303,7 @@ fun PhotoInfoChoiceScreen(
                 )
             }
         }
+        }  // else 블록 닫기
     }
     
     // STT 녹음 다이얼로그
@@ -290,6 +312,7 @@ fun PhotoInfoChoiceScreen(
             isRecording = isRecording,
             transcribedText = transcribedText,
             isProcessing = isProcessing,
+            isWaitingForAnalyze = isWaitingForAnalyze,
             errorMessage = errorMessage,
             onStartRecording = {
                 if (!isRecording) {
@@ -308,14 +331,26 @@ fun PhotoInfoChoiceScreen(
             onConfirm = {
                 if (transcribedText.isNotBlank()) {
                     isProcessing = true
-                    view.announceForAccessibility("일기를 생성하고 있습니다")
                     
                     coroutineScope.launch {
                         try {
-                            // 1. 위치 정보 가져오기
+                            // 1. analyze 완료 대기
+                            if (isAnalyzing) {
+                                isWaitingForAnalyze = true
+                                view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                                // analyze가 완료될 때까지 대기
+                                while (isAnalyzing) {
+                                    kotlinx.coroutines.delay(100)
+                                }
+                                isWaitingForAnalyze = false
+                            }
+                            
+                            view.announceForAccessibility("일기를 생성하고 있습니다")
+                            
+                            // 2. 위치 정보 가져오기
                             val locationData = locationHelper.getCurrentLocation()
                             
-                            // 2. generate API 호출
+                            // 3. generate API 호출
                             val diaryResult = photoRepository.generateDiaryWithLLM(
                                 userInput = transcribedText,
                                 blipCaption = captionResult,
@@ -324,7 +359,7 @@ fun PhotoInfoChoiceScreen(
                                 location = locationData?.locationName
                             )
                             
-                            // 3. DB에 저장
+                            // 4. DB에 저장
                             val result = photoRepository.savePhotoLocal(
                                 photoPath = decodedPath,
                                 userDescription = transcribedText,
@@ -342,7 +377,7 @@ fun PhotoInfoChoiceScreen(
                                 view.announceForAccessibility("일기가 저장되었습니다")
                                 showDialog = false
                                 
-                                // 4. PhotoDetailScreen으로 이동
+                                // 5. PhotoDetailScreen으로 이동
                                 val encodedPath = Uri.encode(decodedPath)
                                 navController.navigate("photo_detail/$encodedPath") {
                                     popUpTo("main") { inclusive = false }
@@ -356,6 +391,7 @@ fun PhotoInfoChoiceScreen(
                             view.announceForAccessibility("일기 생성에 실패했습니다")
                         } finally {
                             isProcessing = false
+                            isWaitingForAnalyze = false
                         }
                     }
                 }
@@ -383,6 +419,7 @@ private fun VoiceRecordingDialog(
     isRecording: Boolean,
     transcribedText: String,
     isProcessing: Boolean,
+    isWaitingForAnalyze: Boolean,
     errorMessage: String?,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
@@ -393,26 +430,26 @@ private fun VoiceRecordingDialog(
     val view = LocalView.current
     
     Dialog(onDismissRequest = { if (!isRecording && !isProcessing) onCancel() }) {
-        Card(
-            modifier = Modifier
+            Card(
+                modifier = Modifier
                 .fillMaxWidth(0.95f)
-                .padding(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                // 다이얼로그 타이틀
-                Text(
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // 다이얼로그 타이틀
+                    Text(
                     text = "음성으로 추가하기",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
                     textAlign = TextAlign.Center
                 )
                 
@@ -424,7 +461,11 @@ private fun VoiceRecordingDialog(
                             color = Color.Black
                         )
                         Text(
-                            text = "일기를 생성하고 있어요...",
+                            text = if (isWaitingForAnalyze) {
+                                "사진 분석을 기다리고 있어요..."
+                            } else {
+                                "일기를 생성하고 있어요..."
+                            },
                             fontSize = 16.sp,
                             color = Color.Gray,
                             textAlign = TextAlign.Center
@@ -500,12 +541,12 @@ private fun VoiceRecordingDialog(
                         )
                     }
                 }
-                
-                // 버튼 영역
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                    
+                    // 버튼 영역
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     when {
                         isProcessing -> {
                             // 처리 중일 때는 버튼 없음
@@ -539,29 +580,29 @@ private fun VoiceRecordingDialog(
                         }
                         transcribedText.isNotBlank() -> {
                             // 전사 완료 시: 확인, 취소
-                            Button(
-                                onClick = {
+                        Button(
+                            onClick = { 
                                     view.announceForAccessibility("일기를 생성합니다")
                                     onConfirm()
-                                },
-                                modifier = Modifier
-                                    .weight(1.6f)
-                                    .height(50.dp)
+                            },
+                            modifier = Modifier
+                                .weight(1.6f)
+                                .height(50.dp)
                                     .semantics { contentDescription = "확인, 일기 생성하기" },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Black,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
                                 Text("확인", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                             }
                             
-                            TextButton(
+                        TextButton(
                                 onClick = onCancel,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(50.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp)
                                     .semantics { contentDescription = "취소하기" }
                             ) {
                                 Text("취소", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
