@@ -45,6 +45,7 @@ fun PhotoInfoChoiceScreen(
     val decodedPath = Uri.decode(imagePath)
     val coroutineScope = rememberCoroutineScope()
     val photoRepository = remember { PhotoRepository(context) }
+    val locationHelper = remember { com.example.sodam_diary.utils.LocationHelper(context) }
     
     // 상태 관리
     var showDialog by remember { mutableStateOf(false) }
@@ -87,9 +88,11 @@ fun PhotoInfoChoiceScreen(
             try {
                 val photoFile = File(decodedPath)
                 if (photoFile.exists()) {
-                    // PhotoRepository의 내부 메서드를 호출할 수 없으므로 임시로 처리
-                    // 실제로는 PhotoRepository에 public 메서드 추가 필요
-                    captionResult = "분석 완료" // TODO: 실제 API 호출
+                    // 1단계: BLIP 캡션 분석
+                    captionResult = photoRepository.analyzeImageForCaption(decodedPath)
+                    if (captionResult != null) {
+                        view.announceForAccessibility("사진 분석이 완료되었습니다")
+                    }
                 }
             } catch (e: Exception) {
                 captionResult = null
@@ -202,9 +205,49 @@ fun PhotoInfoChoiceScreen(
                 SecondaryActionButton(
                     text = "건너뛰기",
                     onClick = {
-                        val encodedPath = Uri.encode(decodedPath)
-                        navController.navigate("photo_detail/$encodedPath") {
-                            popUpTo("main") { inclusive = false }
+                        coroutineScope.launch {
+                            try {
+                                view.announceForAccessibility("사진을 저장하고 있습니다")
+                                
+                                // 위치 정보 가져오기
+                                val locationData = locationHelper.getCurrentLocation()
+                                
+                                // generate API 호출 (userInput은 null)
+                                val diaryResult = if (captionResult != null) {
+                                    photoRepository.generateDiaryWithLLM(
+                                        userInput = null,  // 사용자 입력 없음
+                                        blipCaption = captionResult,
+                                        latitude = locationData?.latitude,
+                                        longitude = locationData?.longitude,
+                                        location = locationData?.locationName
+                                    )
+                                } else {
+                                    null
+                                }
+                                
+                                // DB에 저장
+                                val result = photoRepository.savePhotoLocal(
+                                    photoPath = decodedPath,
+                                    userDescription = null,
+                                    userVoicePath = null,
+                                    latitude = locationData?.latitude,
+                                    longitude = locationData?.longitude,
+                                    locationName = locationData?.locationName,
+                                    captureDate = System.currentTimeMillis(),
+                                    caption = captionResult,
+                                    imageDescription = diaryResult?.first,
+                                    tags = diaryResult?.second
+                                )
+                                
+                                if (result.isSuccess) {
+                                    val encodedPath = Uri.encode(decodedPath)
+                                    navController.navigate("photo_detail/$encodedPath") {
+                                        popUpTo("main") { inclusive = false }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                view.announceForAccessibility("사진 저장에 실패했습니다")
+                            }
                         }
                     },
                     modifier = Modifier
@@ -243,15 +286,47 @@ fun PhotoInfoChoiceScreen(
                     
                     coroutineScope.launch {
                         try {
-                            // TODO: PhotoRepository에 public API 메서드 추가 필요
-                            // 현재는 네비게이션만 처리
-                            val encodedPath = Uri.encode(decodedPath)
-                            val encodedInput = Uri.encode(transcribedText)
-                            navController.navigate("photo_detail/$encodedPath?userInput=$encodedInput&voicePath=${Uri.encode(currentVoicePath ?: "")}") {
-                                popUpTo("main") { inclusive = false }
+                            // 1. 위치 정보 가져오기
+                            val locationData = locationHelper.getCurrentLocation()
+                            
+                            // 2. generate API 호출
+                            val diaryResult = photoRepository.generateDiaryWithLLM(
+                                userInput = transcribedText,
+                                blipCaption = captionResult,
+                                latitude = locationData?.latitude,
+                                longitude = locationData?.longitude,
+                                location = locationData?.locationName
+                            )
+                            
+                            // 3. DB에 저장
+                            val result = photoRepository.savePhotoLocal(
+                                photoPath = decodedPath,
+                                userDescription = transcribedText,
+                                userVoicePath = currentVoicePath,
+                                latitude = locationData?.latitude,
+                                longitude = locationData?.longitude,
+                                locationName = locationData?.locationName,
+                                captureDate = System.currentTimeMillis(),
+                                caption = captionResult,
+                                imageDescription = diaryResult?.first,
+                                tags = diaryResult?.second
+                            )
+                            
+                            if (result.isSuccess) {
+                                view.announceForAccessibility("일기가 저장되었습니다")
+                                showDialog = false
+                                
+                                // 4. PhotoDetailScreen으로 이동
+                                val encodedPath = Uri.encode(decodedPath)
+                                navController.navigate("photo_detail/$encodedPath") {
+                                    popUpTo("main") { inclusive = false }
+                                }
+                            } else {
+                                errorMessage = "사진 저장에 실패했습니다"
+                                view.announceForAccessibility("사진 저장에 실패했습니다")
                             }
                         } catch (e: Exception) {
-                            errorMessage = "일기 생성에 실패했습니다"
+                            errorMessage = "일기 생성에 실패했습니다: ${e.message}"
                             view.announceForAccessibility("일기 생성에 실패했습니다")
                         } finally {
                             isProcessing = false

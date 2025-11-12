@@ -43,8 +43,11 @@ data class AnalyzeResponse(
  * 일기 생성 요청 (2단계)
  */
 data class GenerateRequest(
-    val user_input: String,
-    val blip_caption: String
+    val user_input: String?,      // nullable로 변경 (서버 스펙 변경)
+    val blip_caption: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val location: String?
 )
 
 /**

@@ -47,16 +47,24 @@ class PhotoRepository(context: Context) {
             val caption = analyzeImageForCaption(photoPath)
             Log.d("PhotoRepository", "📷 BLIP 캡션 - caption: ${caption?.take(100)}")
             
-            // 2단계: 일기 생성 (LLM) - userDescription이 있을 때만
+            // 2단계: 일기 생성 (LLM) - caption이 있으면 항상 호출 (userDescription은 nullable)
             var imageDescription: String? = null
             var tags: String? = null
             
-            if (!userDescription.isNullOrBlank() && !caption.isNullOrBlank()) {
-                val diaryResult = generateDiaryWithLLM(userDescription, caption)
+            if (caption != null) {
+                val diaryResult = generateDiaryWithLLM(
+                    userInput = userDescription,  // nullable로 전달
+                    blipCaption = caption,
+                    latitude = latitude,
+                    longitude = longitude,
+                    location = locationName
+                )
                 imageDescription = diaryResult?.first
                 tags = diaryResult?.second
                 Log.d("PhotoRepository", "📝 LLM 일기 - diary: ${imageDescription?.take(100)}")
                 Log.d("PhotoRepository", "🏷️ 태그 - tags: $tags")
+            } else {
+                Log.w("PhotoRepository", "⚠️ caption이 없어서 일기 생성 스킵")
             }
             
             // 3. 모든 정보를 로컬 DB에 저장
@@ -84,7 +92,7 @@ class PhotoRepository(context: Context) {
     }
 
     /**
-     * 서버 통신 없이 빠르게 로컬 DB에만 저장 (개발/테스트용)
+     * 서버 통신 없이 빠르게 로컬 DB에만 저장 (caption, diary, tags 포함 가능)
      */
     suspend fun savePhotoLocal(
         photoPath: String,
@@ -93,12 +101,12 @@ class PhotoRepository(context: Context) {
         latitude: Double?,
         longitude: Double?,
         locationName: String?,
-        captureDate: Long
+        captureDate: Long,
+        caption: String? = null,
+        imageDescription: String? = null,
+        tags: String? = null
     ): Result<Long> {
         return try {
-            // 임시 이미지 설명 (서버 통신 없이)
-            val imageDescription = "사진이 성공적으로 저장되었습니다."
-            
             val photoEntity = PhotoEntity(
                 photoPath = photoPath,
                 captureDate = captureDate,
@@ -108,8 +116,8 @@ class PhotoRepository(context: Context) {
                 imageDescription = imageDescription,
                 userDescription = userDescription,
                 userVoicePath = userVoicePath,
-                caption = null,
-                tags = null
+                caption = caption,
+                tags = tags
             )
             
             val photoId = photoDao.insertPhoto(photoEntity)
@@ -120,9 +128,9 @@ class PhotoRepository(context: Context) {
     }
     
     /**
-     * 1단계: 이미지 분석 API 호출 (BLIP 캡션)
+     * 1단계: 이미지 분석 API 호출 (BLIP 캡션) - Public 메서드
      */
-    private suspend fun analyzeImageForCaption(photoPath: String): String? {
+    suspend fun analyzeImageForCaption(photoPath: String): String? {
         return try {
             Log.d("PhotoRepository", "🌐 1단계 API 시작 - analyze")
             val photoFile = File(photoPath)
@@ -133,7 +141,17 @@ class PhotoRepository(context: Context) {
             }
             
             Log.d("PhotoRepository", "📁 파일 존재 확인 - Size: ${photoFile.length()} bytes")
-            val photoRequestBody = photoFile.asRequestBody("image/*".toMediaTypeOrNull())
+            
+            // MIME 타입을 명시적으로 image/jpeg로 설정
+            val mimeType = when {
+                photoFile.extension.lowercase() == "png" -> "image/png"
+                photoFile.extension.lowercase() == "jpg" -> "image/jpeg"
+                photoFile.extension.lowercase() == "jpeg" -> "image/jpeg"
+                else -> "image/jpeg"
+            }
+            Log.d("PhotoRepository", "📸 MIME Type: $mimeType")
+            
+            val photoRequestBody = photoFile.asRequestBody(mimeType.toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("image_file", photoFile.name, photoRequestBody)
             
             Log.d("PhotoRepository", "⏱️ analyze API 요청 시작 (15초 타임아웃)")
@@ -163,21 +181,28 @@ class PhotoRepository(context: Context) {
     }
     
     /**
-     * 2단계: 일기 생성 API 호출 (LLM)
+     * 2단계: 일기 생성 API 호출 (LLM) - Public 메서드
      * @return Pair<diary, tags> 또는 null
      */
-    private suspend fun generateDiaryWithLLM(
-        userInput: String,
-        blipCaption: String
+    suspend fun generateDiaryWithLLM(
+        userInput: String?,        // nullable로 변경
+        blipCaption: String?,
+        latitude: Double?,
+        longitude: Double?,
+        location: String?
     ): Pair<String, String>? {
         return try {
             Log.d("PhotoRepository", "🌐 2단계 API 시작 - generate")
-            Log.d("PhotoRepository", "📝 userInput: ${userInput.take(30)}")
-            Log.d("PhotoRepository", "📷 blipCaption: ${blipCaption.take(30)}")
+            Log.d("PhotoRepository", "📝 userInput: ${userInput?.take(30) ?: "null"}")
+            Log.d("PhotoRepository", "📷 blipCaption: ${blipCaption?.take(30) ?: "null"}")
+            Log.d("PhotoRepository", "📍 location: lat=$latitude, lng=$longitude, name=$location")
             
             val request = com.example.sodam_diary.data.network.GenerateRequest(
                 user_input = userInput,
-                blip_caption = blipCaption
+                blip_caption = blipCaption,
+                latitude = latitude,
+                longitude = longitude,
+                location = location
             )
             
             Log.d("PhotoRepository", "⏱️ generate API 요청 시작 (20초 타임아웃)")

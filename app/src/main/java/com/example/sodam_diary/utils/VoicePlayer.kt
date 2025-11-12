@@ -13,7 +13,7 @@ class VoicePlayer(private val context: Context) {
     
     private var mediaPlayer: MediaPlayer? = null
     private var currentPlayingPath: String? = null
-    private var isPlaying: Boolean = false
+    private var _isPlaying: Boolean = false
     
     // 콜백
     private var onPlaybackComplete: (() -> Unit)? = null
@@ -27,7 +27,7 @@ class VoicePlayer(private val context: Context) {
     fun playVoice(voicePath: String): Boolean {
         try {
             // 이미 재생 중이면 중지
-            if (isPlaying) {
+            if (_isPlaying) {
                 stopVoice()
             }
             
@@ -45,7 +45,7 @@ class VoicePlayer(private val context: Context) {
                 prepare()
                 setOnCompletionListener {
                     Log.d("VoicePlayer", "✅ 재생 완료")
-                    isPlaying = false
+                    _isPlaying = false
                     currentPlayingPath = null
                     onPlaybackComplete?.invoke()
                 }
@@ -59,7 +59,7 @@ class VoicePlayer(private val context: Context) {
             }
             
             currentPlayingPath = voicePath
-            isPlaying = true
+            _isPlaying = true
             
             return true
             
@@ -85,7 +85,7 @@ class VoicePlayer(private val context: Context) {
             
             Log.d("VoicePlayer", "⏹️ 재생 중지")
             
-            isPlaying = false
+            _isPlaying = false
             currentPlayingPath = null
             mediaPlayer = null
             
@@ -101,7 +101,7 @@ class VoicePlayer(private val context: Context) {
     fun pauseVoice() {
         try {
             mediaPlayer?.pause()
-            isPlaying = false
+            _isPlaying = false
             Log.d("VoicePlayer", "⏸️ 일시정지")
         } catch (e: Exception) {
             Log.e("VoicePlayer", "❌ 일시정지 실패", e)
@@ -114,7 +114,7 @@ class VoicePlayer(private val context: Context) {
     fun resumeVoice() {
         try {
             mediaPlayer?.start()
-            isPlaying = true
+            _isPlaying = true
             Log.d("VoicePlayer", "▶️ 재개")
         } catch (e: Exception) {
             Log.e("VoicePlayer", "❌ 재개 실패", e)
@@ -124,7 +124,7 @@ class VoicePlayer(private val context: Context) {
     /**
      * 재생 중 여부
      */
-    fun isPlaying(): Boolean = isPlaying
+    fun isPlaying(): Boolean = _isPlaying
     
     /**
      * 현재 재생 중인 파일 경로
@@ -182,7 +182,7 @@ class VoicePlayer(private val context: Context) {
         try {
             mediaPlayer?.release()
             mediaPlayer = null
-            isPlaying = false
+            _isPlaying = false
             currentPlayingPath = null
         } catch (e: Exception) {
             Log.e("VoicePlayer", "❌ 정리 실패", e)
