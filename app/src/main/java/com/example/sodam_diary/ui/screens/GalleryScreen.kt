@@ -70,9 +70,12 @@ fun GalleryScreen(navController: NavController) {
     var isRecording by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var isSearching by remember { mutableStateOf(false) }
+    var isSearchRecording by remember { mutableStateOf(false) }
+    var currentSearchVoicePath by remember { mutableStateOf<String?>(null) }
     
     // VoiceRecorder
     val voiceRecorder = remember { VoiceRecorder(context) }
+    val searchVoiceRecorder = remember { VoiceRecorder(context) }
     
     // 마이크 권한 체크
     val micPermissionGranted = remember {
@@ -94,16 +97,16 @@ fun GalleryScreen(navController: NavController) {
         }
     )
     
-    // VoiceRecorder 콜백 설정
+    // VoiceRecorder 콜백 설정 (음성 검색용)
     DisposableEffect(Unit) {
-        voiceRecorder.setCallbacks(
+        searchVoiceRecorder.setCallbacks(
             onTranscription = { text ->
                 searchQuery = text
-                isRecording = false
+                isSearchRecording = false
                 view.announceForAccessibility("검색어: $text")
             },
             onError = { error ->
-                isRecording = false
+                isSearchRecording = false
                 view.announceForAccessibility(error)
             },
             onReady = {
@@ -112,8 +115,8 @@ fun GalleryScreen(navController: NavController) {
         )
         
         onDispose {
-            if (isRecording) {
-                voiceRecorder.cancelRecording()
+            if (isSearchRecording) {
+                searchVoiceRecorder.cancelRecording()
             }
         }
     }
@@ -414,61 +417,56 @@ fun GalleryScreen(navController: NavController) {
             }
     }
     
-    // 음성 검색 다이얼로그
-    if (showSearchDialog) {
-        VoiceSearchDialog(
-            isRecording = isRecording,
-            searchQuery = searchQuery,
-            isSearching = isSearching,
-            onStartRecording = {
-                if (!isRecording) {
-                    searchQuery = ""
-                    voiceRecorder.startRecording()
-                    isRecording = true
-                }
-            },
-            onStopRecording = {
-                if (isRecording) {
-                    voiceRecorder.stopRecording()
-                    isRecording = false
-                }
-            },
-            onSearch = {
-                if (searchQuery.isNotBlank()) {
-                    isSearching = true
-                    view.announceForAccessibility("검색을 시작합니다")
-                    
-                    coroutineScope.launch {
-                        try {
-                            val results = photoRepository.searchPhotosByVoice(searchQuery)
-                            if (results.isEmpty()) {
-                                view.announceForAccessibility("검색 결과가 없습니다")
-                            } else {
-                                view.announceForAccessibility("${results.size}개의 사진을 찾았습니다")
-                                photos = results
-                            }
-                        } catch (e: Exception) {
-                            view.announceForAccessibility("검색에 실패했습니다")
-                        } finally {
-                            isSearching = false
-                            showSearchDialog = false
-                            searchQuery = ""
-                        }
+    // 전사 완료 시 자동으로 검색 시작
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isNotBlank() && !isSearchRecording && showSearchDialog && !isSearching) {
+            isSearching = true
+            view.announceForAccessibility("검색을 시작합니다")
+            
+            coroutineScope.launch {
+                try {
+                    val results = photoRepository.searchPhotosByVoice(searchQuery)
+                    if (results.isEmpty()) {
+                        view.announceForAccessibility("검색 결과가 없습니다")
+                    } else {
+                        view.announceForAccessibility("${results.size}개의 사진을 찾았습니다")
+                        photos = results
                     }
+                } catch (e: Exception) {
+                    view.announceForAccessibility("검색에 실패했습니다")
+                } finally {
+                    isSearching = false
+                    showSearchDialog = false
+                    searchQuery = ""
+                }
+            }
+        }
+    }
+    
+    // 간단한 음성 검색 다이얼로그
+    if (showSearchDialog && !isSearching) {
+        SimpleRecordingDialog(
+            isRecording = isSearchRecording,
+            onStop = {
+                if (isSearchRecording) {
+                    searchVoiceRecorder.stopRecording()
+                    isSearchRecording = false
                 }
             },
             onCancel = {
-                if (isRecording) {
-                    voiceRecorder.cancelRecording()
-                    isRecording = false
+                if (isSearchRecording) {
+                    searchVoiceRecorder.cancelRecording()
+                    isSearchRecording = false
                 }
                 showSearchDialog = false
                 searchQuery = ""
-            },
-            onRetry = {
-                searchQuery = ""
             }
         )
+    }
+    
+    // 검색 중 다이얼로그
+    if (showSearchDialog && isSearching) {
+        SearchingDialog()
     }
 }
 
@@ -549,23 +547,19 @@ private fun formatThumbnailDate(timestamp: Long): String {
     return formatter.format(date)
 }
 
+// 간단한 녹음 다이얼로그 (중지 버튼만)
 @Composable
-private fun VoiceSearchDialog(
+private fun SimpleRecordingDialog(
     isRecording: Boolean,
-    searchQuery: String,
-    isSearching: Boolean,
-    onStartRecording: () -> Unit,
-    onStopRecording: () -> Unit,
-    onSearch: () -> Unit,
-    onCancel: () -> Unit,
-    onRetry: () -> Unit
+    onStop: () -> Unit,
+    onCancel: () -> Unit
 ) {
     val view = LocalView.current
     
-    Dialog(onDismissRequest = { if (!isRecording && !isSearching) onCancel() }) {
+    Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
+                .fillMaxWidth(0.8f)
                 .padding(8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
@@ -573,149 +567,67 @@ private fun VoiceSearchDialog(
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // 다이얼로그 타이틀
+                // 중지 버튼만 표시
+                Button(
+                    onClick = {
+                        onStop()
+                        view.announceForAccessibility("녹음을 중지했습니다")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .semantics {
+                            contentDescription = "녹음 중지하기, 말씀이 끝나면 눌러주세요"
+                        },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "중지",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+// 검색 중 다이얼로그
+@Composable
+private fun SearchingDialog() {
+    Dialog(onDismissRequest = { }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    color = Color.Black
+                )
                 Text(
-                    text = "🎤 음성 검색",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    text = "검색하고 있어요...",
+                    fontSize = 18.sp,
                     color = Color.Black,
                     textAlign = TextAlign.Center
                 )
-                
-                // 상태에 따른 안내 메시지
-                when {
-                    isSearching -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(48.dp),
-                            color = Color.Black
-                        )
-                        Text(
-                            text = "사진을 검색하고 있어요...",
-                            fontSize = 16.sp,
-                            color = Color.Gray,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    searchQuery.isNotBlank() -> {
-                        Text(
-                            text = "검색어:",
-                            fontSize = 14.sp,
-                            color = Color.Gray
-                        )
-                        Text(
-                            text = searchQuery,
-                            fontSize = 20.sp,
-                            color = Color.Black,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        )
-                    }
-                    else -> {
-                        Text(
-                            text = "검색하고 싶은 단어를 말씀해주세요\n(예: 산, 바다, 친구들)",
-                            fontSize = 16.sp,
-                            color = Color.Gray,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                
-                // STT 버튼 (토글형)
-                if (!isSearching) {
-                    Button(
-                        onClick = {
-                            if (isRecording) {
-                                onStopRecording()
-                            } else if (searchQuery.isBlank()) {
-                                onStartRecording()
-                            }
-                        },
-                        enabled = searchQuery.isBlank(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .semantics {
-                                contentDescription = if (isRecording) {
-                                    "녹음 중지하기"
-                                } else {
-                                    "녹음 시작하기, 검색어를 말씀해주세요"
-                                }
-                            },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isRecording) Color.Red else Color.Black,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = if (isRecording) "🔴 녹음 중지" else "🎤 녹음 시작",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                
-                // 버튼 영역
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    when {
-                        isSearching -> {
-                            // 검색 중일 때는 버튼 없음
-                        }
-                        searchQuery.isNotBlank() -> {
-                            // 검색어 입력 완료: 검색, 취소
-                            Button(
-                                onClick = {
-                                    view.announceForAccessibility("검색을 시작합니다")
-                                    onSearch()
-                                },
-                                modifier = Modifier
-                                    .weight(1.6f)
-                                    .height(50.dp)
-                                    .semantics { contentDescription = "검색하기" },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.Black,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("검색", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            }
-                            
-                            TextButton(
-                                onClick = onCancel,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(50.dp)
-                                    .semantics { contentDescription = "취소하기" }
-                            ) {
-                                Text("취소", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            }
-                        }
-                        else -> {
-                            // 대기 중: 취소만
-                            TextButton(
-                                onClick = onCancel,
-                                enabled = !isRecording,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(50.dp)
-                                    .semantics { contentDescription = "취소하기" }
-                            ) {
-                                Text("취소", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            }
-                        }
-                    }
-                }
             }
         }
     }
