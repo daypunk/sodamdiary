@@ -164,6 +164,32 @@ fun PhotoInfoChoiceScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
+                // 분석 중 로딩 표시
+                if (isAnalyzing) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 32.dp, vertical = 16.dp)
+                            .semantics { 
+                                contentDescription = "사진을 분석하고 있어요. 잠시만 기다려주세요" 
+                            },
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "사진을 분석하고 있어요...",
+                            fontSize = 16.sp,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                
                 // 본문 설명
                 Text(
                     text = "지금의 상황이나 감정을 추가하면\n일기가 더욱 다채로워져요.",
