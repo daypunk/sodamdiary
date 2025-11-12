@@ -379,7 +379,12 @@ fun GalleryScreen(navController: NavController) {
                     Button(
                         onClick = { 
                             if (micPermissionGranted.value) {
+                                // 즉시 녹음 시작
+                                searchQuery = ""
+                                currentSearchVoicePath = searchVoiceRecorder.startRecording()
+                                isSearchRecording = true
                                 showSearchDialog = true
+                                view.announceForAccessibility("녹음이 시작되었습니다. 검색할 내용을 말씀해주세요")
                             } else {
                                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
@@ -387,7 +392,7 @@ fun GalleryScreen(navController: NavController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp)
-                            .semantics { contentDescription = "음성 검색하기, 말씀하신 내용으로 사진을 검색할 수 있어요" },
+                            .semantics { contentDescription = "음성 검색하기, 버튼을 누르면 바로 녹음이 시작됩니다" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
                             contentColor = Color.Black
@@ -399,7 +404,7 @@ fun GalleryScreen(navController: NavController) {
                         )
                     ) {
                         Text(
-                            text = "🎤 음성 검색",
+                            text = "음성 검색",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
