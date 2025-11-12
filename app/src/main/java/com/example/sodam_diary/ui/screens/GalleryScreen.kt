@@ -108,6 +108,9 @@ fun GalleryScreen(navController: NavController) {
             onError = { error ->
                 isSearchRecording = false
                 view.announceForAccessibility(error)
+                // 오류 발생 시 다이얼로그 닫기
+                showSearchDialog = false
+                searchQuery = ""
             },
             onReady = {
                 view.announceForAccessibility("녹음이 시작되었습니다. 검색어를 말씀해주세요")

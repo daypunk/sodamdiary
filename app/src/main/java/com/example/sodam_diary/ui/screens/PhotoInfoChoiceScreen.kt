@@ -114,9 +114,67 @@ fun PhotoInfoChoiceScreen(
                 view.announceForAccessibility("음성 인식이 완료되었습니다. $text")
             },
             onError = { error ->
-                errorMessage = error
                 isRecording = false
                 view.announceForAccessibility(error)
+                // 오류 발생 시 "건너뛰기"처럼 동작 (사용자 입력 없이 진행)
+                showDialog = false
+                isGeneratingDiary = true
+                
+                coroutineScope.launch {
+                    try {
+                        // analyze 완료 대기
+                        if (isAnalyzing) {
+                            view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                            while (isAnalyzing) {
+                                kotlinx.coroutines.delay(100)
+                            }
+                        }
+                        
+                        view.announceForAccessibility("일기를 적고 있어요")
+                        
+                        // 위치 정보 가져오기
+                        val locationData = locationHelper.getCurrentLocation()
+                        
+                        // generate API 호출 (userInput은 null)
+                        val diaryResult = if (captionResult != null) {
+                            photoRepository.generateDiaryWithLLM(
+                                userInput = null,
+                                blipCaption = captionResult,
+                                latitude = locationData?.latitude,
+                                longitude = locationData?.longitude,
+                                location = locationData?.locationName
+                            )
+                        } else {
+                            null
+                        }
+                        
+                        // DB에 저장
+                        val result = photoRepository.savePhotoLocal(
+                            photoPath = decodedPath,
+                            userDescription = null,
+                            userVoicePath = null,
+                            latitude = locationData?.latitude,
+                            longitude = locationData?.longitude,
+                            locationName = locationData?.locationName,
+                            captureDate = System.currentTimeMillis(),
+                            caption = captionResult,
+                            imageDescription = diaryResult?.first,
+                            tags = diaryResult?.second
+                        )
+                        
+                        if (result.isSuccess) {
+                            view.announceForAccessibility("일기가 저장되었습니다")
+                            val encodedPath = Uri.encode(decodedPath)
+                            navController.navigate("photo_detail/$encodedPath") {
+                                popUpTo("main") { inclusive = false }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        view.announceForAccessibility("일기 생성에 실패했습니다")
+                    } finally {
+                        isGeneratingDiary = false
+                    }
+                }
             },
             onReady = {
                 view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
