@@ -1,9 +1,11 @@
 package com.example.sodam_diary.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.compose.foundation.Image
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,21 +13,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.example.sodam_diary.data.repository.PhotoRepository
 import com.example.sodam_diary.ui.components.ScreenLayout
 import com.example.sodam_diary.ui.components.PrimaryActionButton
 import com.example.sodam_diary.ui.components.SecondaryActionButton
-import com.example.sodam_diary.utils.PhotoManager
+import com.example.sodam_diary.utils.VoiceRecorder
+import kotlinx.coroutines.launch
 import java.io.File
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -37,24 +42,183 @@ fun PhotoInfoChoiceScreen(
     imagePath: String
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val decodedPath = Uri.decode(imagePath)
-    val imageFile = File(decodedPath)
-    val photoManager = remember { PhotoManager(context) }
+    val coroutineScope = rememberCoroutineScope()
+    val photoRepository = remember { PhotoRepository(context) }
+    val locationHelper = remember { com.example.sodam_diary.utils.LocationHelper(context) }
     
+    // 상태 관리
     var showDialog by remember { mutableStateOf(false) }
-    var userInput by remember { mutableStateOf("") }
+    var isRecording by remember { mutableStateOf(false) }
+    var transcribedText by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isGeneratingDiary by remember { mutableStateOf(false) } // 일기 생성 중 로딩 상태
     
-    // 이미지 로드
-    val bitmap = remember(decodedPath) {
-        photoManager.loadRotatedBitmap(imageFile)
+    // 백그라운드 API 상태
+    var captionResult by remember { mutableStateOf<String?>(null) }
+    var isAnalyzing by remember { mutableStateOf(false) }
+    
+    // VoiceRecorder (STT만 사용, 파일 저장 안 함)
+    val voiceRecorder = remember { VoiceRecorder(context) }
+    
+    // 마이크 권한 체크
+    val micPermissionGranted = remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == 
+            PackageManager.PERMISSION_GRANTED
+        )
+    }
+    
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            micPermissionGranted.value = granted
+            if (!granted) {
+                errorMessage = "마이크 권한이 필요합니다"
+                view.announceForAccessibility("마이크 권한이 필요합니다")
+            }
+        }
+    )
+    
+    // 화면 진입 시 백그라운드에서 analyze API 호출
+    LaunchedEffect(decodedPath) {
+        isAnalyzing = true
+        coroutineScope.launch {
+            try {
+                val photoFile = File(decodedPath)
+                if (photoFile.exists()) {
+                    // 1단계: BLIP 캡션 분석
+                    captionResult = photoRepository.analyzeImageForCaption(decodedPath)
+                    if (captionResult != null) {
+                        view.announceForAccessibility("사진 분석이 완료되었습니다")
+                    }
+                }
+            } catch (e: Exception) {
+                captionResult = null
+            } finally {
+                isAnalyzing = false
+            }
+        }
+    }
+    
+    // VoiceRecorder 콜백 설정
+    DisposableEffect(Unit) {
+        voiceRecorder.setCallbacks(
+            onTranscription = { text ->
+                transcribedText = text
+                isRecording = false
+                view.announceForAccessibility("음성 인식이 완료되었습니다. $text")
+            },
+            onError = { error ->
+                isRecording = false
+                view.announceForAccessibility(error)
+                // 오류 발생 시 "건너뛰기"처럼 동작 (사용자 입력 없이 진행)
+                showDialog = false
+                isGeneratingDiary = true
+                
+                coroutineScope.launch {
+                    try {
+                        // analyze 완료 대기
+                        if (isAnalyzing) {
+                            view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                            while (isAnalyzing) {
+                                kotlinx.coroutines.delay(100)
+                            }
+                        }
+                        
+                        view.announceForAccessibility("일기를 적고 있어요")
+                        
+                        // 위치 정보 가져오기
+                        val locationData = locationHelper.getCurrentLocation()
+                        
+                        // generate API 호출 (userInput은 null)
+                        val diaryResult = if (captionResult != null) {
+                            photoRepository.generateDiaryWithLLM(
+                                userInput = null,
+                                blipCaption = captionResult,
+                                latitude = locationData?.latitude,
+                                longitude = locationData?.longitude,
+                                location = locationData?.locationName
+                            )
+                        } else {
+                            null
+                        }
+                        
+                        // DB에 저장 (userVoicePath는 항상 null)
+                        val result = photoRepository.savePhotoLocal(
+                            photoPath = decodedPath,
+                            userDescription = null,
+                            userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
+                            latitude = locationData?.latitude,
+                            longitude = locationData?.longitude,
+                            locationName = locationData?.locationName,
+                            captureDate = System.currentTimeMillis(),
+                            caption = captionResult,
+                            imageDescription = diaryResult?.first,
+                            tags = diaryResult?.second
+                        )
+                        
+                        if (result.isSuccess) {
+                            view.announceForAccessibility("일기가 저장되었습니다")
+                            val encodedPath = Uri.encode(decodedPath)
+                            navController.navigate("photo_detail/$encodedPath") {
+                                popUpTo("main") { inclusive = false }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        view.announceForAccessibility("일기 생성에 실패했습니다")
+                    } finally {
+                        isGeneratingDiary = false
+                    }
+                }
+            },
+            onReady = {
+                view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
+            }
+        )
+        
+        onDispose {
+            if (isRecording) {
+                voiceRecorder.cancelRecording()
+            }
+        }
     }
     
     // 시각장애인용 고대비 디자인
-    val titleFocus = remember { FocusRequester() }
+    val addButtonFocus = remember { FocusRequester() }
 
     ScreenLayout(
-        initialFocusRequester = titleFocus
+        initialFocusRequester = addButtonFocus,
+        contentFocusLabel = "사진에 추가 정보 입력"
     ) {
+        if (isGeneratingDiary) {
+            // 일기 생성 중 로딩 화면
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp)
+                    .semantics { 
+                        traversalIndex = 0f
+                        contentDescription = "인공지능이 사진과 말씀하신 내용을 바탕으로 일기를 작성하고 있습니다. 잠시만 기다려주세요."
+                    },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(60.dp)
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = "일기를 적고 있어요",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -63,11 +227,13 @@ fun PhotoInfoChoiceScreen(
             // 상단 여백
             Spacer(modifier = Modifier.height(80.dp))
             
-            // 중앙 영역: 타이틀과 본문을 한 묶음으로
+            // 중앙 영역: 타이틀과 본문을 한 묶음으로 (나중에 읽힘)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { traversalIndex = 1f } // 버튼 다음에 읽힘
             ) {
                 // 타이틀
                 Text(
@@ -79,9 +245,9 @@ fun PhotoInfoChoiceScreen(
                     lineHeight = 48.sp,
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
-                        .focusRequester(titleFocus)
-                        .focusable()
-                        .semantics { contentDescription = "사진에 정보를 추가할까요?" }
+                        .semantics { 
+                            contentDescription = "사진에 정보를 추가할까요? 음성으로 지금의 상황이나 감정을 말씀하시면, 인공지능이 사진과 함께 일기를 작성해드립니다."
+                        }
                 )
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -96,146 +262,263 @@ fun PhotoInfoChoiceScreen(
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
                         .semantics { 
-                            contentDescription = "지금의 상황이나 감정을 추가하면 일기가 더욱 다채로워져요" 
+                            contentDescription = "음성을 추가하면 더 감성적인 일기가 만들어집니다" 
                         }
                 )
             }
             
-            // 하단 버튼 영역 - 다른 화면들과 동일한 하단 위치
+            // 하단 버튼 영역 (먼저 읽힘)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 0f }, // 가장 먼저 읽힘
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 하단 버튼: 추가하기 (화이트 백그라운드 + 블랙 텍스트)
+                // 추가하기 버튼
                 PrimaryActionButton(
                     text = "추가하기",
-                    onClick = { showDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = "정보 추가하기" }
-                )
-
-                SecondaryActionButton(
-                    text = "건너뛰기",
-                    onClick = {
-                        val encodedPath = Uri.encode(decodedPath)
-                        navController.navigate("photo_detail/$encodedPath") {
-                            popUpTo("main") { inclusive = false }
+                    onClick = { 
+                        if (micPermissionGranted.value) {
+                            // 즉시 STT 시작 (파일 저장 안 함)
+                            errorMessage = null
+                            transcribedText = ""
+                            voiceRecorder.startRecording()
+                            isRecording = true
+                            showDialog = true
+                            view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "정보 추가 없이 저장하기" }
+                        .focusRequester(addButtonFocus)
+                        .focusable()
+                        .semantics { 
+                            contentDescription = "음성으로 정보 추가하기. 버튼을 누르면 녹음이 시작됩니다. 지금의 상황이나 감정을 자유롭게 말씀해주세요. 예를 들어, 오늘 날씨가 좋아서 산책을 나왔어요, 라고 말씀하시면 됩니다."
+                        }
                 )
+
+                // 건너뛰기 버튼
+                SecondaryActionButton(
+                    text = "건너뛰기",
+                    onClick = {
+                        // 로딩 상태로 전환
+                        isGeneratingDiary = true
+                        
+                        coroutineScope.launch {
+                            try {
+                                // 1. analyze 완료 대기
+                                if (isAnalyzing) {
+                                    view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                                    // analyze가 완료될 때까지 대기
+                                    while (isAnalyzing) {
+                                        kotlinx.coroutines.delay(100)
+                                    }
+                                }
+                                
+                                view.announceForAccessibility("일기를 적고 있어요")
+                                
+                                // 2. 위치 정보 가져오기
+                                val locationData = locationHelper.getCurrentLocation()
+                                
+                                // 3. generate API 호출 (userInput은 null)
+                                val diaryResult = if (captionResult != null) {
+                                    photoRepository.generateDiaryWithLLM(
+                                        userInput = null,  // 사용자 입력 없음
+                                        blipCaption = captionResult,
+                                        latitude = locationData?.latitude,
+                                        longitude = locationData?.longitude,
+                                        location = locationData?.locationName
+                                    )
+                                } else {
+                                    null
+                                }
+                                
+                                // 4. DB에 저장 (userVoicePath는 항상 null)
+                                val result = photoRepository.savePhotoLocal(
+                                    photoPath = decodedPath,
+                                    userDescription = null,
+                                    userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
+                                    latitude = locationData?.latitude,
+                                    longitude = locationData?.longitude,
+                                    locationName = locationData?.locationName,
+                                    captureDate = System.currentTimeMillis(),
+                                    caption = captionResult,
+                                    imageDescription = diaryResult?.first,
+                                    tags = diaryResult?.second
+                                )
+                                
+                                if (result.isSuccess) {
+                                    view.announceForAccessibility("일기가 저장되었습니다")
+                        val encodedPath = Uri.encode(decodedPath)
+                        navController.navigate("photo_detail/$encodedPath") {
+                            popUpTo("main") { inclusive = false }
+                                    }
+                                } else {
+                                    view.announceForAccessibility("사진 저장에 실패했습니다")
+                                    isGeneratingDiary = false
+                                }
+                            } catch (e: Exception) {
+                                view.announceForAccessibility("일기 생성에 실패했습니다")
+                                isGeneratingDiary = false
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { 
+                            contentDescription = "건너뛰기. 음성 추가 없이 사진만으로 일기를 만듭니다. 인공지능이 사진을 분석해서 자동으로 일기를 작성해드립니다."
+                        }
+                )
+            }
+        }
+        }  // else 블록 닫기
+    }
+    
+    // 전사 완료 시 자동으로 다음 단계 진행 (다이얼로그 닫고 페이지 로딩으로 전환)
+    LaunchedEffect(transcribedText) {
+        if (transcribedText.isNotBlank() && !isRecording && showDialog) {
+            // 다이얼로그 닫기
+            showDialog = false
+            
+            // 페이지 로딩 상태로 전환
+            isGeneratingDiary = true
+            
+            coroutineScope.launch {
+                try {
+                    // 1. analyze 완료 대기
+                    if (isAnalyzing) {
+                        view.announceForAccessibility("사진 분석을 기다리고 있습니다")
+                        while (isAnalyzing) {
+                            kotlinx.coroutines.delay(100)
+                        }
+                    }
+                    
+                    view.announceForAccessibility("일기를 적고 있어요")
+                    
+                    // 2. 위치 정보 가져오기
+                    val locationData = locationHelper.getCurrentLocation()
+                    
+                    // 3. generate API 호출
+                    val diaryResult = photoRepository.generateDiaryWithLLM(
+                        userInput = transcribedText,
+                        blipCaption = captionResult,
+                        latitude = locationData?.latitude,
+                        longitude = locationData?.longitude,
+                        location = locationData?.locationName
+                    )
+                    
+                    // 4. DB에 저장 (userVoicePath는 항상 null)
+                    val result = photoRepository.savePhotoLocal(
+                        photoPath = decodedPath,
+                        userDescription = transcribedText,
+                        userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
+                        latitude = locationData?.latitude,
+                        longitude = locationData?.longitude,
+                        locationName = locationData?.locationName,
+                        captureDate = System.currentTimeMillis(),
+                        caption = captionResult,
+                        imageDescription = diaryResult?.first,
+                        tags = diaryResult?.second
+                    )
+                    
+                    if (result.isSuccess) {
+                        view.announceForAccessibility("일기가 저장되었습니다")
+                        
+                        // 5. PhotoDetailScreen으로 이동
+                        val encodedPath = Uri.encode(decodedPath)
+                        navController.navigate("photo_detail/$encodedPath") {
+                            popUpTo("main") { inclusive = false }
+                        }
+                    } else {
+                        errorMessage = "사진 저장에 실패했습니다"
+                        view.announceForAccessibility("사진 저장에 실패했습니다")
+                    }
+                } catch (e: Exception) {
+                    errorMessage = "일기 생성에 실패했습니다: ${e.message}"
+                    view.announceForAccessibility("일기 생성에 실패했습니다")
+                } finally {
+                    isGeneratingDiary = false
+                }
             }
         }
     }
     
-    // 정보 입력 다이얼로그
+    // 간단한 녹음 다이얼로그 (중지 버튼만)
     if (showDialog) {
-        Dialog(onDismissRequest = { showDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(0.95f) // 폭을 더 넓게
-                    .padding(8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // 다이얼로그 타이틀
-                    Text(
-                        text = "정보 추가하기",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    
-                    // 텍스트 입력 필드
-                    OutlinedTextField(
-                        value = userInput,
-                        onValueChange = { userInput = it },
-                        label = { Text("상황이나 감정을 입력해주세요") },
-                        placeholder = { Text("예: 친구들과 맛있는 점심을 먹었어요") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics { contentDescription = "텍스트 입력창" },
-                        minLines = 3,
-                        maxLines = 5,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.Black,
-                            unfocusedTextColor = Color.Black,
-                            disabledTextColor = Color.Black,
-                            cursorColor = Color.Black,
-                            focusedBorderColor = Color.Black,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedLabelColor = Color.Black,
-                            unfocusedLabelColor = Color.Gray,
-                            focusedPlaceholderColor = Color.Gray,
-                            unfocusedPlaceholderColor = Color.Gray
-                        )
-                    )
-                    
-                    // 버튼 영역
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // 확인 버튼 - 더 넓게 왼쪽 배치
-                        Button(
-                            onClick = { 
-                                val encodedPath = Uri.encode(decodedPath)
-                                navController.navigate("photo_detail/$encodedPath?userInput=${Uri.encode(userInput)}") {
-                                    popUpTo("main") { inclusive = false }
-                                }
-                                showDialog = false
-                            },
-                            modifier = Modifier
-                                .weight(1.6f)
-                                .height(50.dp)
-                                .semantics { contentDescription = "확인" },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "확인",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+        SimpleRecordingDialog(
+            isRecording = isRecording,
+            onStop = {
+                if (isRecording) {
+                    voiceRecorder.stopRecording()
+                    isRecording = false
+                }
+            },
+            onCancel = {
+                if (isRecording) {
+                    voiceRecorder.cancelRecording()
+                    isRecording = false
+                }
+                showDialog = false
+                transcribedText = ""
+                errorMessage = null
+            }
+        )
+    }
+}
 
-                        // 취소 버튼 - 오른쪽 배치
-                        TextButton(
-                            onClick = { 
-                                showDialog = false
-                                userInput = ""
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(50.dp)
-                                .semantics { contentDescription = "취소" }
-                        ) {
-                            Text(
-                                text = "취소",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                        }
-                    }
+// 간단한 녹음 다이얼로그 (중지 버튼만)
+@Composable
+private fun SimpleRecordingDialog(
+    isRecording: Boolean,
+    onStop: () -> Unit,
+    onCancel: () -> Unit
+) {
+    val view = LocalView.current
+    
+    Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .padding(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // 중지 버튼만 표시
+                Button(
+                    onClick = {
+                        onStop()
+                        view.announceForAccessibility("녹음을 중지했습니다. 말씀하신 내용을 글자로 바꾸고 있습니다")
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .semantics {
+                            contentDescription = "녹음 중지 버튼. 말씀이 끝나면 이 버튼을 눌러주세요. 지금까지 말씀하신 내용이 자동으로 글자로 변환됩니다."
+                        },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "중지",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
     }
 }
+

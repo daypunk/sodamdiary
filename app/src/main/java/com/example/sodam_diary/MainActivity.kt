@@ -40,11 +40,6 @@ import com.example.sodam_diary.ui.screens.PhotoPreviewScreen
 import com.example.sodam_diary.ui.screens.PhotoInfoChoiceScreen
 import com.example.sodam_diary.ui.screens.PhotoDetailScreen
 import com.example.sodam_diary.ui.screens.GalleryScreen
-import com.example.sodam_diary.ui.screens.SearchStep1Screen
-import com.example.sodam_diary.ui.screens.SearchStep2Screen
-import com.example.sodam_diary.ui.screens.SearchStep3Screen
-import com.example.sodam_diary.ui.screens.SearchStep4Screen
-import com.example.sodam_diary.ui.screens.SearchResultScreen
 import com.example.sodam_diary.ui.theme.SodamdiaryTheme
 
 class MainActivity : ComponentActivity() {
@@ -91,10 +86,20 @@ fun AppNavigation() {
             PhotoInfoChoiceScreen(navController, imagePath)
         }
         composable(
-            "photo_detail/{imagePath}?userInput={userInput}",
+            "photo_detail/{imagePath}?userInput={userInput}&voicePath={voicePath}&photoIds={photoIds}",
             arguments = listOf(
                 navArgument("imagePath") { type = NavType.StringType },
                 navArgument("userInput") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("voicePath") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("photoIds") {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
@@ -103,70 +108,14 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val imagePath = backStackEntry.arguments?.getString("imagePath") ?: ""
             val userInput = backStackEntry.arguments?.getString("userInput")
+            val voicePath = backStackEntry.arguments?.getString("voicePath")
+            val photoIdsString = backStackEntry.arguments?.getString("photoIds")
             val decodedUserInput = if (userInput != null) Uri.decode(userInput) else null
-            PhotoDetailScreen(navController, imagePath, decodedUserInput)
-        }
-        
-        // 검색 플로우
-        composable("search_step1") { SearchStep1Screen(navController) }
-        composable(
-            "search_step2/{selectedYear}",
-            arguments = listOf(navArgument("selectedYear") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val selectedYear = backStackEntry.arguments?.getString("selectedYear")
-            val year = when (selectedYear) {
-                null, "null", "-" -> null
-                else -> selectedYear
-            }
-            SearchStep2Screen(navController, year)
-        }
-        composable(
-            "search_step3/{selectedYear}/{selectedMonth}",
-            arguments = listOf(
-                navArgument("selectedYear") { type = NavType.StringType },
-                navArgument("selectedMonth") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val selectedYear = backStackEntry.arguments?.getString("selectedYear")
-            val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
-            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
-            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
-            SearchStep3Screen(navController, year, month)
-        }
-        composable(
-            "search_step4/{selectedYear}/{selectedMonth}/{selectedLocation}",
-            arguments = listOf(
-                navArgument("selectedYear") { type = NavType.StringType },
-                navArgument("selectedMonth") { type = NavType.StringType },
-                navArgument("selectedLocation") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val selectedYear = backStackEntry.arguments?.getString("selectedYear")
-            val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
-            val selectedLocation = backStackEntry.arguments?.getString("selectedLocation")
-            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
-            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
-            val location = when (selectedLocation) { null, "null", "-" -> null; else -> selectedLocation }
-            SearchStep4Screen(navController, year, month, location)
-        }
-        composable(
-            "search_result/{selectedYear}/{selectedMonth}/{selectedLocation}/{selectedContent}",
-            arguments = listOf(
-                navArgument("selectedYear") { type = NavType.StringType },
-                navArgument("selectedMonth") { type = NavType.StringType },
-                navArgument("selectedLocation") { type = NavType.StringType },
-                navArgument("selectedContent") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val selectedYear = backStackEntry.arguments?.getString("selectedYear")
-            val selectedMonth = backStackEntry.arguments?.getString("selectedMonth")
-            val selectedLocation = backStackEntry.arguments?.getString("selectedLocation")
-            val selectedContent = backStackEntry.arguments?.getString("selectedContent")
-            val year = when (selectedYear) { null, "null", "-" -> null; else -> selectedYear }
-            val month = when (selectedMonth) { null, "null", "-" -> null; else -> selectedMonth }
-            val location = when (selectedLocation) { null, "null", "-" -> null; else -> selectedLocation }
-            val content = when (selectedContent) { null, "null", "-" -> null; else -> selectedContent }
-            SearchResultScreen(navController, year, month, location, content)
+            val decodedVoicePath = if (voicePath != null) Uri.decode(voicePath) else null
+            val photoIds = if (photoIdsString != null && photoIdsString != "null") {
+                Uri.decode(photoIdsString).split(",").mapNotNull { it.toLongOrNull() }
+            } else null
+            PhotoDetailScreen(navController, imagePath, decodedUserInput, decodedVoicePath, photoIds)
         }
     }
 }

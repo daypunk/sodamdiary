@@ -10,6 +10,9 @@ import androidx.room.PrimaryKey
  * - 촬영한 장소
  * - 서버로부터 받은 이미지 설명
  * - 사용자가 입력한 설명
+ * - 사용자 음성 녹음 파일
+ * - BLIP 기반 이미지 캡션
+ * - 태그 목록
  */
 @Entity(tableName = "photos")
 data class PhotoEntity(
@@ -31,9 +34,18 @@ data class PhotoEntity(
     // 촬영한 장소 - 주소 텍스트
     val locationName: String?,
     
-    // 서버로부터 받은 이미지 설명
+    // LLM 생성 일기 (기존: 서버 이미지 설명)
     val imageDescription: String?,
     
     // 사용자가 입력한 설명 (STT로 변환된 텍스트, 선택사항)
-    val userDescription: String?
+    val userDescription: String?,
+    
+    // 사용자 음성 파일 경로 (*.m4a)
+    val userVoicePath: String? = null,
+    
+    // BLIP 기반 이미지 캡션 (서버 analyze API 결과)
+    val caption: String? = null,
+    
+    // 태그 목록 (쉼표 구분: "태그1,태그2,태그3")
+    val tags: String? = null
 )

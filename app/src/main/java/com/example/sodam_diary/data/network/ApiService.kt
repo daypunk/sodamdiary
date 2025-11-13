@@ -11,23 +11,71 @@ import retrofit2.http.*
 interface ApiService {
     
     /**
-     * 사진과 사용자 설명을 서버에 전송하여 이미지 설명을 받음
-     * @param photo 촬영한 사진 파일
-     * @param fileInfo 사용자가 입력한 설명 (STT로 변환된 텍스트, 선택사항)
-     * @return 서버로부터 받은 이미지 설명
+     * 1단계: 이미지 분석 (BLIP 캡션 생성)
+     * @param imageFile 촬영한 사진 파일
+     * @return BLIP 기반 이미지 캡션
      */
     @Multipart
-    @POST("api/v1/images/caption/")
-    suspend fun analyzePhoto(
-        @Part file: MultipartBody.Part?,
-        @Part("file_info") fileInfo: RequestBody?
-    ): Response<ApiResponse>
+    @POST("api/v1/analyze/")
+    suspend fun analyzeImage(
+        @Part image_file: MultipartBody.Part
+    ): Response<AnalyzeResponse>
+    
+    /**
+     * 2단계: 일기 생성 (LLM 기반)
+     * @param request 사용자 입력과 BLIP 캡션
+     * @return LLM 생성 일기와 태그
+     */
+    @POST("api/v1/generate/")
+    suspend fun generateDiary(
+        @Body request: GenerateRequest
+    ): Response<GenerateResponse>
 }
 
 /**
- * 서버 응답 데이터 클래스
+ * 이미지 분석 응답 (1단계)
  */
-data class ApiResponse(
+data class AnalyzeResponse(
+    val caption: String
+)
+
+/**
+ * 일기 생성 요청 (2단계)
+ */
+data class GenerateRequest(
+    val user_input: String?,      // nullable로 변경 (서버 스펙 변경)
+    val blip_caption: String?,
+    val latitude: Double?,
+    val longitude: Double?,
+    val location: String?
+)
+
+/**
+ * 일기 생성 응답 (2단계)
+ */
+data class GenerateResponse(
+    val diary: String,
+    val tags: List<String>
+)
+
+// === 기존 API 호환성 유지 (deprecated) ===
+/**
+ * @deprecated 새로운 2단계 API(analyze, generate)를 사용하세요
+ */
+@Multipart
+@Deprecated("Use analyzeImage and generateDiary instead")
+suspend fun ApiService.analyzePhoto(
+    @Part file: MultipartBody.Part?,
+    @Part("file_info") fileInfo: RequestBody?
+): Response<LegacyApiResponse> {
+    throw UnsupportedOperationException("This endpoint is deprecated")
+}
+
+/**
+ * @deprecated 레거시 응답 형식
+ */
+@Deprecated("Use AnalyzeResponse and GenerateResponse instead")
+data class LegacyApiResponse(
     val file: String?,
     val refined_caption: String?,
     val blip_text: String?,

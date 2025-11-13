@@ -11,6 +11,9 @@
     
     <!-- 카메라 권한 -->
     <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- 마이크 권한 (음성 녹음 및 STT) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="true"
