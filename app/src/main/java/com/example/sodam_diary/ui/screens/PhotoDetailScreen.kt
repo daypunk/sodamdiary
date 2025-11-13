@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
+import com.example.sodam_diary.ui.theme.AppSurfaceBackground
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -241,7 +243,7 @@ fun PhotoDetailScreen(
                     onClick = { navController.navigate("main") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black
+                        contentColor = AppBackground
                     ),
                     modifier = Modifier.semantics {
                         traversalIndex = 1f
@@ -373,7 +375,7 @@ fun PhotoDetailScreen(
 
                 // 하단 섹션: 텍스트와 버튼 (높이 제한)
                 Surface(
-                    color = Color(0xFF1E1E1E),
+                    color = AppSurfaceBackground,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -490,7 +492,7 @@ fun PhotoDetailScreen(
                                     },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    contentColor = AppBackground
                                 ),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                                 elevation = ButtonDefaults.buttonElevation(
@@ -526,12 +528,12 @@ private fun InfoRow(
             text = label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.Black.copy(alpha = 0.7f)
+            color = AppBackground.copy(alpha = 0.7f)
         )
         Text(
             text = value,
             fontSize = 16.sp,
-            color = Color.Black,
+            color = AppBackground,
             modifier = Modifier.padding(top = 4.dp)
         )
     }

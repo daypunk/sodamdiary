@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -260,7 +261,7 @@ fun SearchResultScreen(
                         .semantics { contentDescription = "갤러리로 돌아가기" },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black
+                        contentColor = AppBackground
                     ),
                     shape = RoundedCornerShape(8.dp),
                     elevation = ButtonDefaults.buttonElevation(

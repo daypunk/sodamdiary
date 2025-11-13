@@ -479,44 +479,36 @@ private fun SimpleRecordingDialog(
     val view = LocalView.current
     
     Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .padding(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            shape = RoundedCornerShape(16.dp)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                // 중지 버튼만 표시
-                Button(
-                    onClick = {
-                        onStop()
-                        view.announceForAccessibility("녹음을 중지했습니다. 말씀하신 내용을 글자로 바꾸고 있습니다")
+            Button(
+                onClick = {
+                    onStop()
+                    view.announceForAccessibility("녹음을 중지했습니다. 말씀하신 내용을 글자로 바꾸고 있습니다")
+                },
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(80.dp)
+                    .semantics {
+                        contentDescription = "녹음 중지 버튼. 말씀이 끝나면 이 버튼을 눌러주세요. 지금까지 말씀하신 내용이 자동으로 글자로 변환됩니다."
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .semantics {
-                            contentDescription = "녹음 중지 버튼. 말씀이 끝나면 이 버튼을 눌러주세요. 지금까지 말씀하신 내용이 자동으로 글자로 변환됩니다."
-                        },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "중지",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 4.dp
+                )
+            ) {
+                Text(
+                    text = "녹음 중지",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

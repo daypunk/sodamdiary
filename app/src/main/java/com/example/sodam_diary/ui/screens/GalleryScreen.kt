@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -222,7 +223,7 @@ fun GalleryScreen(navController: NavController) {
                                 onClick = { navController.navigate("main") },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    contentColor = AppBackground
                                 )
                             ) {
                                 Text(
@@ -404,7 +405,7 @@ fun GalleryScreen(navController: NavController) {
                             .semantics { contentDescription = "전체 갤러리로 돌아가기" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
-                            contentColor = Color.Black
+                            contentColor = AppBackground
                         ),
                         shape = RoundedCornerShape(8.dp),
                         elevation = ButtonDefaults.buttonElevation(
@@ -440,7 +441,7 @@ fun GalleryScreen(navController: NavController) {
                             .semantics { contentDescription = "음성 검색하기, 버튼을 누르면 바로 녹음이 시작됩니다" },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White,
-                            contentColor = Color.Black
+                            contentColor = AppBackground
                         ),
                         shape = RoundedCornerShape(8.dp),
                         elevation = ButtonDefaults.buttonElevation(
@@ -602,44 +603,36 @@ private fun SimpleRecordingDialog(
     val view = LocalView.current
     
     Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .padding(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            shape = RoundedCornerShape(16.dp)
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                // 중지 버튼만 표시
-                Button(
-                    onClick = {
-                        onStop()
-                        view.announceForAccessibility("녹음을 중지했습니다")
+            Button(
+                onClick = {
+                    onStop()
+                    view.announceForAccessibility("녹음을 중지했습니다")
+                },
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(80.dp)
+                    .semantics {
+                        contentDescription = "녹음 중지하기, 말씀이 끝나면 눌러주세요"
                     },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .semantics {
-                            contentDescription = "녹음 중지하기, 말씀이 끝나면 눌러주세요"
-                        },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = "중지",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 4.dp
+                )
+            ) {
+                Text(
+                    text = "녹음 중지",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -665,12 +658,12 @@ private fun SearchingDialog() {
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(48.dp),
-                    color = Color.Black
+                    color = AppBackground
                 )
                 Text(
                     text = "검색하고 있어요...",
                     fontSize = 18.sp,
-                    color = Color.Black,
+                    color = AppBackground,
                     textAlign = TextAlign.Center
                 )
             }

@@ -9,3 +9,9 @@ val Pink80 = Color(0xFFEFB8C8)
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
+
+// 소담일기 앱 배경색 (뉴트럴 다크)
+val AppBackground = Color(0xFF1C1C1E)
+
+// 하단 텍스트 섹션 배경색 (배경보다 밝음)
+val AppSurfaceBackground = Color(0xFF2C2C2E)

@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
@@ -125,32 +126,38 @@ fun AppNavigation() {
 fun MainScreen(navController: NavHostController) {
     val titleFocusRequester = remember { FocusRequester() }
     // 시각장애인용 고대비 디자인: 검은 배경 + status bar 영역
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(AppBackground)
     ) {
         // 상단 검은색 헤더 영역 (status bar 공간 확보)
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsTopHeight(WindowInsets.statusBars)
-                .background(Color.Black)
+                .background(AppBackground)
         )
+        
+        // 중앙 콘텐츠 (화면 중앙보다 약간 위쪽에 배치)
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // 앱 제목 - 위쪽에 배치 (조금 낮춤)
+            // 상단 여백 (하단보다 작게)
+            Spacer(modifier = Modifier.weight(0.7f))
+            
+            // 앱 제목
             Text(
                 text = "소담일기",
-                fontSize = 40.sp,
+                fontSize = 52.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .padding(top = 120.dp)
                     .semantics {
                         contentDescription = "소담일기, 사진을 읽어드릴게요"
                         heading()
@@ -158,6 +165,9 @@ fun MainScreen(navController: NavHostController) {
                     .focusRequester(titleFocusRequester)
             )
             LaunchedEffect(Unit) { titleFocusRequester.requestFocus() }
+
+            // 타이틀과 버튼 사이 간격
+            Spacer(modifier = Modifier.height(60.dp))
 
             // 버튼들을 담을 Row
             Row(
@@ -174,7 +184,7 @@ fun MainScreen(navController: NavHostController) {
                     .semantics { contentDescription = "카메라로 사진 촬영하기" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = Color.Black
+                    contentColor = AppBackground
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 8.dp,
@@ -200,7 +210,7 @@ fun MainScreen(navController: NavHostController) {
                     .semantics { contentDescription = "갤러리에서 사진 보기" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = Color.Black
+                    contentColor = AppBackground
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 8.dp,
@@ -216,9 +226,9 @@ fun MainScreen(navController: NavHostController) {
                 )
             }
             }
-
-            // 하단 여백
-            Spacer(modifier = Modifier.height(160.dp))
+            
+            // 하단 여백 (상단보다 크게)
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

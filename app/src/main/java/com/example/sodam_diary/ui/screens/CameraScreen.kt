@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
@@ -68,7 +69,7 @@ fun CameraScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(AppBackground)
     ) {
     if (hasCameraPermission) {
             CameraContent(
@@ -102,7 +103,7 @@ fun CameraScreen(navController: NavController) {
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black
+                        contentColor = AppBackground
                     ),
                     modifier = Modifier.semantics { contentDescription = "권한 허용하기" }
                 ) {
@@ -119,7 +120,7 @@ fun CameraScreen(navController: NavController) {
                     onClick = { navController.popBackStack() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black
+                        contentColor = AppBackground
                     ),
                     modifier = Modifier.semantics { contentDescription = "홈으로 돌아가기" }
                 ) {
@@ -189,7 +190,7 @@ fun CameraContent(
                     onClick = { navController.popBackStack() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
-                        contentColor = Color.Black
+                        contentColor = AppBackground
                     )
                 ) {
                     Text(
@@ -240,7 +241,7 @@ fun CameraContent(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.7f))
+                .background(AppBackground.copy(alpha = 0.7f))
                 .padding(24.dp)
                 .semantics { traversalIndex = 0f }, // 가장 먼저 읽힘
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -275,7 +276,7 @@ fun CameraContent(
                     },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = Color.Black
+                    contentColor = AppBackground
                 ),
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                 elevation = ButtonDefaults.buttonElevation(

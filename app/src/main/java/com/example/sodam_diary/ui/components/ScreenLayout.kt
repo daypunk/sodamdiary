@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.focus.FocusRequester
@@ -91,7 +92,7 @@ fun ScreenLayout(
         modifier = modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-            .background(Color.Black)
+            .background(AppBackground)
     ) {
         // 메인 컨텐츠 (먼저 선언하여 접근성 순서상 먼저 읽히도록)
         Column(
@@ -115,14 +116,14 @@ fun ScreenLayout(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.Black)
+                .background(AppBackground)
         ) {
             // Status bar 영역을 검은색으로 채움 (접근성 제외)
             Spacer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .windowInsetsTopHeight(WindowInsets.statusBars)
-                    .background(Color.Black)
+                    .background(AppBackground)
                     .clearAndSetSemantics { }
             )
             // 헤더 영역
@@ -131,7 +132,7 @@ fun ScreenLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .background(Color.Black)
+                        .background(AppBackground)
                         .padding(horizontal = 8.dp)
                         .then(
                             if (suppressHeaderA11y) Modifier.clearAndSetSemantics { }
@@ -217,7 +218,7 @@ fun PrimaryActionButton(
             },
         colors = ButtonDefaults.buttonColors(
             containerColor = Color.White,
-            contentColor = Color.Black
+            contentColor = AppBackground
         ),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         elevation = ButtonDefaults.buttonElevation(
