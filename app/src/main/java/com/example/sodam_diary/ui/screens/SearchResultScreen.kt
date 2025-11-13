@@ -19,6 +19,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -95,13 +99,17 @@ fun SearchResultScreen(
     }
     
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
+    val resultCountFocus = remember { FocusRequester() }
+    
     ScreenLayout(
         showBackButton = true,
-        onBackClick = { navController.popBackStack() }
+        onBackClick = { navController.popBackStack() },
+        initialFocusRequester = resultCountFocus,
+        contentFocusLabel = "검색 결과"
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 컨텐츠 영역
-            Box(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f).semantics { traversalIndex = 0f }) {
                 when {
                     isLoading -> {
                         // 로딩 화면
@@ -191,6 +199,8 @@ fun SearchResultScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 16.dp)
+                                        .focusRequester(resultCountFocus)
+                                        .focusable()
                                         .semantics { contentDescription = "검색 결과 ${searchResults.size}개" }
                                 )
                             }
@@ -210,9 +220,12 @@ fun SearchResultScreen(
                                             photoManager = photoManager,
                                             modifier = Modifier.weight(1f),
                                             onClick = {
-                                                // 사진 상세보기로 이동
+                                                // 사진 상세보기로 이동 (검색 결과 리스트 전달)
                                                 val encodedPath = Uri.encode(photo.photoPath)
-                                                navController.navigate("photo_detail/$encodedPath")
+                                                val sortedPhotos = searchResults.sortedByDescending { it.captureDate }
+                                                val photoIdsString = sortedPhotos.joinToString(",") { it.id.toString() }
+                                                val encodedPhotoIds = Uri.encode(photoIdsString)
+                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds")
                                             }
                                         )
                                     }
@@ -227,23 +240,24 @@ fun SearchResultScreen(
                 }
             }
             
-            // 하단 버튼 - 홈으로
+            // 하단 버튼 - 갤러리로
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 1f },
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Button(
                     onClick = { 
-                        navController.navigate("main") {
-                            popUpTo("main") { inclusive = true }
+                        navController.navigate("gallery") {
+                            popUpTo("gallery") { inclusive = true }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(60.dp)
-                        .semantics { contentDescription = "홈으로 돌아가기" },
+                        .semantics { contentDescription = "갤러리로 돌아가기" },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
                         contentColor = Color.Black
@@ -255,7 +269,7 @@ fun SearchResultScreen(
                     )
                 ) {
                     Text(
-                        text = "홈으로",
+                        text = "갤러리로",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center

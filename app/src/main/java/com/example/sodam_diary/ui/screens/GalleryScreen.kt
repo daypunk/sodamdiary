@@ -60,6 +60,7 @@ fun GalleryScreen(navController: NavController) {
     val coroutineScope = rememberCoroutineScope()
     
     var photos by remember { mutableStateOf<List<PhotoEntity>>(emptyList()) }
+    var allPhotos by remember { mutableStateOf<List<PhotoEntity>>(emptyList()) } // 전체 사진 저장용
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectionMode by remember { mutableStateOf(false) }
@@ -72,6 +73,7 @@ fun GalleryScreen(navController: NavController) {
     var isSearching by remember { mutableStateOf(false) }
     var isSearchRecording by remember { mutableStateOf(false) }
     var currentSearchVoicePath by remember { mutableStateOf<String?>(null) }
+    var isSearchMode by remember { mutableStateOf(false) } // 검색 결과 표시 중인지 여부
     
     // VoiceRecorder
     val voiceRecorder = remember { VoiceRecorder(context) }
@@ -128,7 +130,9 @@ fun GalleryScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             try {
-                photos = photoRepository.getAllPhotos()
+                val loadedPhotos = photoRepository.getAllPhotos()
+                photos = loadedPhotos
+                allPhotos = loadedPhotos // 전체 사진 저장
                 isLoading = false
             } catch (e: Exception) {
                 errorMessage = "사진을 불러오는데 실패했습니다: ${e.message}"
@@ -309,9 +313,12 @@ fun GalleryScreen(navController: NavController) {
                                                             if (set.contains(photo.id)) set.remove(photo.id) else set.add(photo.id)
                                                         }
                                                     } else {
-                                                        // 상세로 이동
+                                                        // 상세로 이동 (전체 사진 ID 리스트 전달)
                                                         val encodedPath = Uri.encode(photo.photoPath)
-                                                        navController.navigate("photo_detail/$encodedPath")
+                                                        val sortedPhotos = photos.sortedByDescending { it.captureDate }
+                                                        val photoIdsString = sortedPhotos.joinToString(",") { it.id.toString() }
+                                                        val encodedPhotoIds = Uri.encode(photoIdsString)
+                                                        navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds")
                                                     }
                                                 }
                                             )
@@ -330,7 +337,7 @@ fun GalleryScreen(navController: NavController) {
                 }
             }
             
-            // 하단 버튼 영역 - 선택삭제 모드에 따라 버튼 전환
+            // 하단 버튼 영역 - 선택삭제 모드 / 검색 모드에 따라 버튼 전환
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -352,9 +359,12 @@ fun GalleryScreen(navController: NavController) {
                                         }
                                     }
                                     // 로컬 상태 갱신
-                                    photos = photoRepository.getAllPhotos()
+                                    val updatedPhotos = photoRepository.getAllPhotos()
+                                    photos = updatedPhotos
+                                    allPhotos = updatedPhotos
                                     selectedIds = emptySet()
                                     selectionMode = false
+                                    isSearchMode = false // 검색 모드도 해제
                                 }
                             }
                         },
@@ -380,8 +390,37 @@ fun GalleryScreen(navController: NavController) {
                             textAlign = TextAlign.Center
                         )
                     }
+                } else if (isSearchMode) {
+                    // 검색 결과 표시 중 - 갤러리로 돌아가기 버튼
+                    Button(
+                        onClick = { 
+                            photos = allPhotos // 전체 사진 복원
+                            isSearchMode = false
+                            view.announceForAccessibility("전체 갤러리로 돌아갑니다")
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(60.dp)
+                            .semantics { contentDescription = "전체 갤러리로 돌아가기" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 8.dp,
+                            pressedElevation = 4.dp
+                        )
+                    ) {
+                        Text(
+                            text = "갤러리로",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 } else {
-                    // 음성 검색하기 버튼 (화이트 백그라운드 + 블랙 텍스트)
+                    // 일반 모드 - 음성 검색하기 버튼
                     Button(
                         onClick = { 
                             if (micPermissionGranted.value) {
@@ -431,12 +470,15 @@ fun GalleryScreen(navController: NavController) {
                     val results = photoRepository.searchPhotosByVoice(searchQuery)
                     if (results.isEmpty()) {
                         view.announceForAccessibility("검색 결과가 없습니다")
+                        isSearchMode = false // 결과 없으면 검색 모드 해제
                     } else {
                         view.announceForAccessibility("${results.size}개의 사진을 찾았습니다")
                         photos = results
+                        isSearchMode = true // 검색 모드 활성화
                     }
                 } catch (e: Exception) {
                     view.announceForAccessibility("검색에 실패했습니다")
+                    isSearchMode = false
                 } finally {
                     isSearching = false
                     showSearchDialog = false

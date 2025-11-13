@@ -2,33 +2,18 @@ package com.example.sodam_diary.utils
 
 import android.content.Context
 import android.content.Intent
-import android.media.MediaRecorder
-import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
-import java.io.File
 
 /**
- * 음성 녹음 + STT 통합 유틸리티
- * MediaRecorder와 SpeechRecognizer를 동시에 실행
+ * 음성을 텍스트로 변환하는 STT 유틸리티 (녹음 파일 저장 없음)
  */
 class VoiceRecorder(private val context: Context) {
     
-    private var mediaRecorder: MediaRecorder? = null
     private var speechRecognizer: SpeechRecognizer? = null
-    private var currentVoiceFilePath: String? = null
-    
-    // 음성 디렉토리
-    private val voicesDir: File by lazy {
-        File(context.filesDir, "voices").apply {
-            if (!exists()) {
-                mkdirs()
-            }
-        }
-    }
     
     // 콜백
     private var onTranscriptionResult: ((String) -> Unit)? = null
@@ -36,97 +21,53 @@ class VoiceRecorder(private val context: Context) {
     private var onReadyForSpeech: (() -> Unit)? = null
     
     /**
-     * 녹음 시작 (MediaRecorder + SpeechRecognizer 동시 실행)
-     * @return 녹음 파일 경로
+     * STT 시작 (음성 인식만 수행, 파일 저장 안 함)
      */
     fun startRecording(): String? {
         try {
-            // 1. 녹음 파일 경로 생성
-            val timestamp = System.currentTimeMillis()
-            val voiceFile = File(voicesDir, "voice_$timestamp.m4a")
-            currentVoiceFilePath = voiceFile.absolutePath
-            
-            // 2. MediaRecorder 설정 및 시작
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setOutputFile(voiceFile.absolutePath)
-                prepare()
-                start()
-            }
-            
-            Log.d("VoiceRecorder", "🎤 녹음 시작 - Path: ${voiceFile.absolutePath}")
-            
-            // 3. SpeechRecognizer 시작
+            Log.d("VoiceRecorder", "🎤 STT 시작")
             startSpeechRecognition()
-            
-            return currentVoiceFilePath
+            return null // 파일 경로 반환 안 함
             
         } catch (e: Exception) {
-            Log.e("VoiceRecorder", "❌ 녹음 시작 실패", e)
-            onError?.invoke("녹음을 시작할 수 없습니다: ${e.message}")
+            Log.e("VoiceRecorder", "❌ STT 시작 실패", e)
+            onError?.invoke("음성 인식을 시작할 수 없습니다: ${e.message}")
             cleanup()
             return null
         }
     }
     
     /**
-     * 녹음 중지
-     * @return 전사된 텍스트 (콜백으로도 전달됨)
+     * STT 중지
      */
     fun stopRecording() {
         try {
-            // 1. MediaRecorder 중지
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            
-            // 2. SpeechRecognizer 중지
             speechRecognizer?.stopListening()
-            
-            Log.d("VoiceRecorder", "🎤 녹음 중지 - Path: $currentVoiceFilePath")
+            Log.d("VoiceRecorder", "🎤 STT 중지")
             
         } catch (e: Exception) {
-            Log.e("VoiceRecorder", "❌ 녹음 중지 실패", e)
+            Log.e("VoiceRecorder", "❌ STT 중지 실패", e)
             cleanup()
         }
     }
     
     /**
-     * 녹음 취소 (파일 삭제)
+     * STT 취소
      */
     fun cancelRecording() {
         try {
-            stopRecording()
-            
-            // 녹음 파일 삭제
-            currentVoiceFilePath?.let { path ->
-                val file = File(path)
-                if (file.exists()) {
-                    file.delete()
-                    Log.d("VoiceRecorder", "🗑️ 녹음 파일 삭제: $path")
-                }
-            }
-            
-            currentVoiceFilePath = null
+            speechRecognizer?.cancel()
+            Log.d("VoiceRecorder", "🎤 STT 취소")
             
         } catch (e: Exception) {
-            Log.e("VoiceRecorder", "❌ 녹음 취소 실패", e)
+            Log.e("VoiceRecorder", "❌ STT 취소 실패", e)
         } finally {
             cleanup()
         }
     }
     
     /**
-     * STT 시작 (내부 사용)
+     * 음성 인식 시작 (내부 사용)
      */
     private fun startSpeechRecognition() {
         try {
@@ -214,6 +155,10 @@ class VoiceRecorder(private val context: Context) {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                // 침묵 감지 시간 연장 (기본 2초 → 5초)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 5000L)
+                // 말하기 시작 전 대기 시간 연장 (기본 5초 → 8초)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 8000L)
             }
             
             speechRecognizer?.startListening(intent)
@@ -248,9 +193,6 @@ class VoiceRecorder(private val context: Context) {
      */
     private fun cleanup() {
         try {
-            mediaRecorder?.release()
-            mediaRecorder = null
-            
             speechRecognizer?.destroy()
             speechRecognizer = null
             
@@ -270,30 +212,6 @@ class VoiceRecorder(private val context: Context) {
         this.onTranscriptionResult = onTranscription
         this.onError = onError
         this.onReadyForSpeech = onReady
-    }
-    
-    /**
-     * 현재 녹음 파일 경로 반환
-     */
-    fun getCurrentVoiceFilePath(): String? = currentVoiceFilePath
-    
-    /**
-     * 음성 파일 존재 여부 확인
-     */
-    fun voiceFileExists(path: String): Boolean {
-        return File(path).exists()
-    }
-    
-    /**
-     * 음성 파일 삭제
-     */
-    fun deleteVoiceFile(path: String): Boolean {
-        return try {
-            File(path).delete()
-        } catch (e: Exception) {
-            Log.e("VoiceRecorder", "❌ 파일 삭제 실패: $path", e)
-            false
-        }
     }
 }
 

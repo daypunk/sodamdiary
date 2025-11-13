@@ -49,7 +49,8 @@ fun PhotoDetailScreen(
     navController: NavController,
     imagePath: String,
     userInput: String? = null,
-    voicePath: String? = null
+    voicePath: String? = null,
+    photoIds: List<Long>? = null
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -65,6 +66,16 @@ fun PhotoDetailScreen(
     var photoEntity by remember { mutableStateOf<PhotoEntity?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isPlayingVoice by remember { mutableStateOf(false) }
+    
+    // 이전/다음 사진 네비게이션
+    val showNavigation = photoIds != null && photoIds.isNotEmpty()
+    val currentPhotoIndex = remember(photoEntity, photoIds) {
+        if (photoEntity != null && photoIds != null) {
+            photoIds.indexOf(photoEntity!!.id)
+        } else -1
+    }
+    val hasPrevious = currentPhotoIndex > 0
+    val hasNext = currentPhotoIndex >= 0 && currentPhotoIndex < (photoIds?.size ?: 0) - 1
     
     // VoicePlayer 콜백 설정
     DisposableEffect(Unit) {
@@ -185,15 +196,16 @@ fun PhotoDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(32.dp)
-                    .semantics { traversalIndex = 0f },
+                    .semantics { 
+                        traversalIndex = 0f
+                        contentDescription = "인공지능이 사진을 분석하고 일기를 작성하고 있습니다. 잠시만 기다려주세요."
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator(
                     color = Color.White,
-                    modifier = Modifier.semantics { 
-                        contentDescription = "일기를 적고 있어요"
-                    }
+                    modifier = Modifier.size(60.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -208,8 +220,7 @@ fun PhotoDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp)
-                    .semantics { traversalIndex = 0f },
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -218,7 +229,12 @@ fun PhotoDetailScreen(
                     fontSize = 18.sp,
                     color = Color.White,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 24.dp)
+                    modifier = Modifier
+                        .padding(bottom = 24.dp)
+                        .semantics { 
+                            traversalIndex = 0f
+                            contentDescription = "오류 메시지. $errorMessage"
+                        }
                 )
                 
                 Button(
@@ -226,7 +242,11 @@ fun PhotoDetailScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.White,
                         contentColor = Color.Black
-                    )
+                    ),
+                    modifier = Modifier.semantics {
+                        traversalIndex = 1f
+                        contentDescription = "홈으로 돌아가기 버튼. 메인 화면으로 이동합니다."
+                    }
                 ) {
                     Text(
                         text = "홈으로",
@@ -236,24 +256,141 @@ fun PhotoDetailScreen(
                 }
             }
         } else {
-            // 사진 상세 정보 화면 - 재구성
+            // 사진 상세 정보 화면 - 재구성 (사진 위, 텍스트+버튼 하단 고정)
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .semantics { traversalIndex = 0f },
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 상단 여백만 - 갤러리와 동일 수준으로 축소
+                // 상단 여백
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 상단 정보 영역: 검은 배경 위 흰 텍스트, 화면 절반 높이, 스크롤 가능
-                Box(
+                // 상단 사진 영역 (원본 비율 유지 + 화살표 네비게이션)
+                if (bitmap != null) {
+                    if (showNavigation) {
+                        // 갤러리/검색 결과에서 진입: 좌우 화살표 표시
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 왼쪽 화살표 (이전 사진)
+                            IconButton(
+                                onClick = {
+                                    if (hasPrevious && photoIds != null) {
+                                        val prevPhotoId = photoIds[currentPhotoIndex - 1]
+                                        coroutineScope.launch {
+                                            val prevPhoto = PhotoRepository(context).getPhotoById(prevPhotoId)
+                                            if (prevPhoto != null) {
+                                                val encodedPath = Uri.encode(prevPhoto.photoPath)
+                                                val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
+                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
+                                                    popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = hasPrevious,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .semantics { 
+                                        contentDescription = if (hasPrevious) "이전 사진 보기" else "첫 번째 사진입니다"
+                                    }
+                            ) {
+                                Text(
+                                    text = "◀",
+                                    fontSize = 28.sp,
+                                    color = if (hasPrevious) Color.White else Color.Gray
+                                )
+                            }
+                            
+                            // 중앙 사진
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "저장된 사진이 표시됩니다",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(max = 320.dp)
+                                    .padding(horizontal = 8.dp)
+                                    .semantics { 
+                                        traversalIndex = 2f
+                                    },
+                                contentScale = ContentScale.Fit
+                            )
+                            
+                            // 오른쪽 화살표 (다음 사진)
+                            IconButton(
+                                onClick = {
+                                    if (hasNext && photoIds != null) {
+                                        val nextPhotoId = photoIds[currentPhotoIndex + 1]
+                                        coroutineScope.launch {
+                                            val nextPhoto = PhotoRepository(context).getPhotoById(nextPhotoId)
+                                            if (nextPhoto != null) {
+                                                val encodedPath = Uri.encode(nextPhoto.photoPath)
+                                                val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
+                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
+                                                    popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = hasNext,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .semantics { 
+                                        contentDescription = if (hasNext) "다음 사진 보기" else "마지막 사진입니다"
+                                    }
+                            ) {
+                                Text(
+                                    text = "▶",
+                                    fontSize = 28.sp,
+                                    color = if (hasNext) Color.White else Color.Gray
+                                )
+                            }
+                        }
+                    } else {
+                        // 촬영 후 진입: 화살표 없이 사진만
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "저장된 사진이 표시됩니다",
+                            modifier = Modifier
+                                .padding(horizontal = 24.dp)
+                                .fillMaxWidth()
+                                .heightIn(max = 320.dp)
+                                .semantics { 
+                                    traversalIndex = 2f
+                                },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+                
+                // 사진과 하단 섹션 사이 여백
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 하단 섹션: 텍스트와 버튼 (높이 제한)
+                Surface(
+                    color = Color(0xFF1E1E1E),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .padding(horizontal = 16.dp)
+                        .weight(1f) // 남은 공간 차지하되, 최소 높이 보장
                 ) {
-                    val state = rememberScrollState()
+                    Column(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // 일기 텍스트 영역 (스크롤 가능, 가장 먼저 읽힘)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f) // 버튼을 제외한 공간 전부
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .semantics { traversalIndex = 0f } // 가장 먼저 읽힘
+                        ) {
+                            val state = rememberScrollState()
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -276,50 +413,20 @@ fun PhotoDetailScreen(
                                     .fillMaxWidth()
                                     .focusRequester(descriptionFocus)
                                     .focusable()
-                                    .semantics { contentDescription = combined }
-                            )
-                        }
-                    }
-                }
-
-                // 하단 섹션: 매우 진한 회색 배경, 상단 라운드, 전체 너비
-                Surface(
-                    color = Color(0xFF1E1E1E),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-                ) {
-                        Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                                .semantics { traversalIndex = 1f }
-                    ) {
-                        // 사진 (라운드 적용)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                                .aspectRatio(4f / 3f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (bitmap != null) {
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = "저장된 사진",
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
-                                        .semantics { contentDescription = "저장된 사진이 표시됩니다" },
-                                    contentScale = ContentScale.Fit
-                                )
+                                            .semantics { 
+                                                contentDescription = "일기 내용. $combined"
+                                            }
+                                    )
+                                }
                             }
                         }
 
-                        // 하단 버튼 - 동일 스타일
+                        // 하단 버튼 영역 (최하단 고정)
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(24.dp),
+                                .padding(24.dp)
+                                .semantics { traversalIndex = 1f }, // 텍스트 다음에 읽힘
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             // 내 목소리 듣기 버튼 (조건부 렌더링)
@@ -344,9 +451,9 @@ fun PhotoDetailScreen(
                                         .height(60.dp)
                                         .semantics { 
                                             contentDescription = if (isPlayingVoice) {
-                                                "재생 중지하기"
+                                                "재생 중지 버튼. 지금 재생 중인 음성을 멈춥니다."
                                             } else {
-                                                "내 목소리 듣기, 사진을 찍을 때 녹음한 음성을 들을 수 있어요"
+                                                "내 목소리 듣기 버튼. 사진을 찍을 때 녹음했던 음성을 재생합니다. 당시의 상황과 감정을 다시 들어볼 수 있습니다."
                                             }
                                         },
                                     colors = ButtonDefaults.buttonColors(
@@ -378,7 +485,9 @@ fun PhotoDetailScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(60.dp)
-                                    .semantics { contentDescription = "갤러리로 돌아가기" },
+                                    .semantics { 
+                                        contentDescription = "갤러리로 버튼. 다른 사진들을 보기 위해 갤러리 화면으로 돌아갑니다."
+                                    },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = Color.White,
                                     contentColor = Color.Black

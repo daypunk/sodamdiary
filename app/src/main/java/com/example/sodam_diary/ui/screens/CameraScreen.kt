@@ -157,7 +157,7 @@ fun CameraContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .semantics { traversalIndex = 0f }
+                .semantics { traversalIndex = 1f } // 버튼 다음에 읽힘
         ) {
         if (cameraError != null) {
             // 카메라 에러 화면
@@ -235,14 +235,14 @@ fun CameraContent(
             )
         }
         
-        // 하단 컨트롤 영역 - 새로운 세로 정렬 디자인
+        // 하단 컨트롤 영역 - 먼저 읽힘
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(Color.Black.copy(alpha = 0.7f))
                 .padding(24.dp)
-                .semantics { traversalIndex = 1f },
+                .semantics { traversalIndex = 0f }, // 가장 먼저 읽힘
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // 촬영 버튼 (화이트 백그라운드 + 블랙 텍스트)
@@ -270,7 +270,9 @@ fun CameraContent(
                     .height(60.dp)
                     .focusRequester(captureButtonFocus)
                     .focusable()
-                    .semantics { contentDescription = "사진 촬영하기" },
+                    .semantics { 
+                        contentDescription = "촬영 버튼. 이 버튼을 누르면 사진이 촬영됩니다. 카메라가 향한 방향의 사진이 저장됩니다."
+                    },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,
                     contentColor = Color.Black

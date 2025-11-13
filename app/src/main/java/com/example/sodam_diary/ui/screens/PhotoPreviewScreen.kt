@@ -17,6 +17,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,13 +47,19 @@ fun PhotoPreviewScreen(
         photoManager.loadRotatedBitmap(imageFile)
     }
     
+    // 포커스 관리
+    val usePhotoButtonFocus = remember { FocusRequester() }
+    
     // 시각장애인용 고대비 디자인 + status bar 대응
-    ScreenLayout {
+    ScreenLayout(
+        initialFocusRequester = usePhotoButtonFocus,
+        contentFocusLabel = "촬영된 사진"
+    ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 상단 제목 - 메인화면과 동일한 위치
+            // 상단 제목 - 나중에 읽힘
             Text(
                 text = "사진 미리보기",
                 fontSize = 40.sp,
@@ -58,7 +68,10 @@ fun PhotoPreviewScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .padding(top = 80.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
-                    .semantics { contentDescription = "사진 미리보기" }
+                    .semantics { 
+                        contentDescription = "사진 미리보기"
+                        traversalIndex = 2f // 버튼들 다음에 읽힘
+                    }
             )
             
             // 사진 영역
@@ -67,7 +80,8 @@ fun PhotoPreviewScreen(
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)),
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                    .semantics { traversalIndex = 1f }, // 버튼 다음에 읽힘
                 contentAlignment = Alignment.Center
             ) {
                 if (bitmap != null) {
@@ -93,11 +107,12 @@ fun PhotoPreviewScreen(
                 }
             }
             
-            // 하단 버튼 영역 - 새로운 세로 정렬 디자인
+            // 하단 버튼 영역 - 먼저 읽힘
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 0f }, // 가장 먼저 읽힘
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 하단 버튼: 사진 사용 (화이트 백그라운드 + 블랙 텍스트)
@@ -109,6 +124,8 @@ fun PhotoPreviewScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(usePhotoButtonFocus)
+                        .focusable()
                         .semantics { contentDescription = "사진 사용하기" }
                 )
 

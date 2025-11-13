@@ -86,7 +86,7 @@ fun AppNavigation() {
             PhotoInfoChoiceScreen(navController, imagePath)
         }
         composable(
-            "photo_detail/{imagePath}?userInput={userInput}&voicePath={voicePath}",
+            "photo_detail/{imagePath}?userInput={userInput}&voicePath={voicePath}&photoIds={photoIds}",
             arguments = listOf(
                 navArgument("imagePath") { type = NavType.StringType },
                 navArgument("userInput") {
@@ -98,15 +98,24 @@ fun AppNavigation() {
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("photoIds") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val imagePath = backStackEntry.arguments?.getString("imagePath") ?: ""
             val userInput = backStackEntry.arguments?.getString("userInput")
             val voicePath = backStackEntry.arguments?.getString("voicePath")
+            val photoIdsString = backStackEntry.arguments?.getString("photoIds")
             val decodedUserInput = if (userInput != null) Uri.decode(userInput) else null
             val decodedVoicePath = if (voicePath != null) Uri.decode(voicePath) else null
-            PhotoDetailScreen(navController, imagePath, decodedUserInput, decodedVoicePath)
+            val photoIds = if (photoIdsString != null && photoIdsString != "null") {
+                Uri.decode(photoIdsString).split(",").mapNotNull { it.toLongOrNull() }
+            } else null
+            PhotoDetailScreen(navController, imagePath, decodedUserInput, decodedVoicePath, photoIds)
         }
     }
 }

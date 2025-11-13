@@ -52,18 +52,15 @@ fun PhotoInfoChoiceScreen(
     var showDialog by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var transcribedText by remember { mutableStateOf("") }
-    var isProcessing by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isGeneratingDiary by remember { mutableStateOf(false) } // 건너뛰기 버튼용 로딩 상태
+    var isGeneratingDiary by remember { mutableStateOf(false) } // 일기 생성 중 로딩 상태
     
     // 백그라운드 API 상태
     var captionResult by remember { mutableStateOf<String?>(null) }
     var isAnalyzing by remember { mutableStateOf(false) }
-    var isWaitingForAnalyze by remember { mutableStateOf(false) } // analyze 대기 상태
     
-    // VoiceRecorder
+    // VoiceRecorder (STT만 사용, 파일 저장 안 함)
     val voiceRecorder = remember { VoiceRecorder(context) }
-    var currentVoicePath by remember { mutableStateOf<String?>(null) }
     
     // 마이크 권한 체크
     val micPermissionGranted = remember {
@@ -148,11 +145,11 @@ fun PhotoInfoChoiceScreen(
                             null
                         }
                         
-                        // DB에 저장
+                        // DB에 저장 (userVoicePath는 항상 null)
                         val result = photoRepository.savePhotoLocal(
                             photoPath = decodedPath,
                             userDescription = null,
-                            userVoicePath = null,
+                            userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
                             latitude = locationData?.latitude,
                             longitude = locationData?.longitude,
                             locationName = locationData?.locationName,
@@ -189,10 +186,11 @@ fun PhotoInfoChoiceScreen(
     }
     
     // 시각장애인용 고대비 디자인
-    val titleFocus = remember { FocusRequester() }
+    val addButtonFocus = remember { FocusRequester() }
 
     ScreenLayout(
-        initialFocusRequester = titleFocus
+        initialFocusRequester = addButtonFocus,
+        contentFocusLabel = "사진에 추가 정보 입력"
     ) {
         if (isGeneratingDiary) {
             // 일기 생성 중 로딩 화면
@@ -200,17 +198,16 @@ fun PhotoInfoChoiceScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(32.dp)
-                    .semantics { traversalIndex = 0f },
+                    .semantics { 
+                        traversalIndex = 0f
+                        contentDescription = "인공지능이 사진과 말씀하신 내용을 바탕으로 일기를 작성하고 있습니다. 잠시만 기다려주세요."
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 CircularProgressIndicator(
                     color = Color.White,
-                    modifier = Modifier
-                        .size(60.dp)
-                        .semantics { 
-                            contentDescription = "일기를 적고 있어요"
-                        }
+                    modifier = Modifier.size(60.dp)
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
@@ -230,11 +227,13 @@ fun PhotoInfoChoiceScreen(
             // 상단 여백
             Spacer(modifier = Modifier.height(80.dp))
             
-            // 중앙 영역: 타이틀과 본문을 한 묶음으로
+            // 중앙 영역: 타이틀과 본문을 한 묶음으로 (나중에 읽힘)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { traversalIndex = 1f } // 버튼 다음에 읽힘
             ) {
                 // 타이틀
                 Text(
@@ -246,9 +245,9 @@ fun PhotoInfoChoiceScreen(
                     lineHeight = 48.sp,
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
-                        .focusRequester(titleFocus)
-                        .focusable()
-                        .semantics { contentDescription = "사진에 정보를 추가할까요?" }
+                        .semantics { 
+                            contentDescription = "사진에 정보를 추가할까요? 음성으로 지금의 상황이나 감정을 말씀하시면, 인공지능이 사진과 함께 일기를 작성해드립니다."
+                        }
                 )
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -263,16 +262,17 @@ fun PhotoInfoChoiceScreen(
                     modifier = Modifier
                         .padding(horizontal = 32.dp)
                         .semantics { 
-                            contentDescription = "지금의 상황이나 감정을 추가하면 일기가 더욱 다채로워져요" 
+                            contentDescription = "음성을 추가하면 더 감성적인 일기가 만들어집니다" 
                         }
                 )
             }
             
-            // 하단 버튼 영역
+            // 하단 버튼 영역 (먼저 읽힘)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .semantics { traversalIndex = 0f }, // 가장 먼저 읽힘
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 추가하기 버튼
@@ -280,10 +280,10 @@ fun PhotoInfoChoiceScreen(
                     text = "추가하기",
                     onClick = { 
                         if (micPermissionGranted.value) {
-                            // 즉시 녹음 시작
+                            // 즉시 STT 시작 (파일 저장 안 함)
                             errorMessage = null
                             transcribedText = ""
-                            currentVoicePath = voiceRecorder.startRecording()
+                            voiceRecorder.startRecording()
                             isRecording = true
                             showDialog = true
                             view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
@@ -293,7 +293,11 @@ fun PhotoInfoChoiceScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "음성으로 정보 추가하기. 버튼을 누르면 바로 녹음이 시작됩니다" }
+                        .focusRequester(addButtonFocus)
+                        .focusable()
+                        .semantics { 
+                            contentDescription = "음성으로 정보 추가하기. 버튼을 누르면 녹음이 시작됩니다. 지금의 상황이나 감정을 자유롭게 말씀해주세요. 예를 들어, 오늘 날씨가 좋아서 산책을 나왔어요, 라고 말씀하시면 됩니다."
+                        }
                 )
 
                 // 건너뛰기 버튼
@@ -332,11 +336,11 @@ fun PhotoInfoChoiceScreen(
                                     null
                                 }
                                 
-                                // 4. DB에 저장
+                                // 4. DB에 저장 (userVoicePath는 항상 null)
                                 val result = photoRepository.savePhotoLocal(
                                     photoPath = decodedPath,
                                     userDescription = null,
-                                    userVoicePath = null,
+                                    userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
                                     latitude = locationData?.latitude,
                                     longitude = locationData?.longitude,
                                     locationName = locationData?.locationName,
@@ -364,32 +368,35 @@ fun PhotoInfoChoiceScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "정보 추가 없이 저장하기" }
+                        .semantics { 
+                            contentDescription = "건너뛰기. 음성 추가 없이 사진만으로 일기를 만듭니다. 인공지능이 사진을 분석해서 자동으로 일기를 작성해드립니다."
+                        }
                 )
             }
         }
         }  // else 블록 닫기
     }
     
-    // 전사 완료 시 자동으로 다음 단계 진행
+    // 전사 완료 시 자동으로 다음 단계 진행 (다이얼로그 닫고 페이지 로딩으로 전환)
     LaunchedEffect(transcribedText) {
-        if (transcribedText.isNotBlank() && !isRecording && showDialog && !isProcessing) {
-            // 전사 완료되면 자동으로 다음 단계 진행
-            isProcessing = true
+        if (transcribedText.isNotBlank() && !isRecording && showDialog) {
+            // 다이얼로그 닫기
+            showDialog = false
+            
+            // 페이지 로딩 상태로 전환
+            isGeneratingDiary = true
             
             coroutineScope.launch {
                 try {
                     // 1. analyze 완료 대기
                     if (isAnalyzing) {
-                        isWaitingForAnalyze = true
                         view.announceForAccessibility("사진 분석을 기다리고 있습니다")
                         while (isAnalyzing) {
                             kotlinx.coroutines.delay(100)
                         }
-                        isWaitingForAnalyze = false
                     }
                     
-                    view.announceForAccessibility("일기를 생성하고 있습니다")
+                    view.announceForAccessibility("일기를 적고 있어요")
                     
                     // 2. 위치 정보 가져오기
                     val locationData = locationHelper.getCurrentLocation()
@@ -403,11 +410,11 @@ fun PhotoInfoChoiceScreen(
                         location = locationData?.locationName
                     )
                     
-                    // 4. DB에 저장
+                    // 4. DB에 저장 (userVoicePath는 항상 null)
                     val result = photoRepository.savePhotoLocal(
                         photoPath = decodedPath,
                         userDescription = transcribedText,
-                        userVoicePath = currentVoicePath,
+                        userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
                         latitude = locationData?.latitude,
                         longitude = locationData?.longitude,
                         locationName = locationData?.locationName,
@@ -419,7 +426,6 @@ fun PhotoInfoChoiceScreen(
                     
                     if (result.isSuccess) {
                         view.announceForAccessibility("일기가 저장되었습니다")
-                        showDialog = false
                         
                         // 5. PhotoDetailScreen으로 이동
                         val encodedPath = Uri.encode(decodedPath)
@@ -429,22 +435,19 @@ fun PhotoInfoChoiceScreen(
                     } else {
                         errorMessage = "사진 저장에 실패했습니다"
                         view.announceForAccessibility("사진 저장에 실패했습니다")
-                        showDialog = false
                     }
                 } catch (e: Exception) {
                     errorMessage = "일기 생성에 실패했습니다: ${e.message}"
                     view.announceForAccessibility("일기 생성에 실패했습니다")
-                    showDialog = false
                 } finally {
-                    isProcessing = false
-                    isWaitingForAnalyze = false
+                    isGeneratingDiary = false
                 }
             }
         }
     }
     
     // 간단한 녹음 다이얼로그 (중지 버튼만)
-    if (showDialog && !isProcessing) {
+    if (showDialog) {
         SimpleRecordingDialog(
             isRecording = isRecording,
             onStop = {
@@ -461,15 +464,7 @@ fun PhotoInfoChoiceScreen(
                 showDialog = false
                 transcribedText = ""
                 errorMessage = null
-                currentVoicePath = null
             }
-        )
-    }
-    
-    // 일기 생성 중 다이얼로그
-    if (showDialog && isProcessing) {
-        ProcessingDialog(
-            isWaitingForAnalyze = isWaitingForAnalyze
         )
     }
 }
@@ -502,13 +497,13 @@ private fun SimpleRecordingDialog(
                 Button(
                     onClick = {
                         onStop()
-                        view.announceForAccessibility("녹음을 중지했습니다")
+                        view.announceForAccessibility("녹음을 중지했습니다. 말씀하신 내용을 글자로 바꾸고 있습니다")
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp)
                         .semantics {
-                            contentDescription = "녹음 중지하기, 말씀이 끝나면 눌러주세요"
+                            contentDescription = "녹음 중지 버튼. 말씀이 끝나면 이 버튼을 눌러주세요. 지금까지 말씀하신 내용이 자동으로 글자로 변환됩니다."
                         },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color.Red,
@@ -527,41 +522,3 @@ private fun SimpleRecordingDialog(
     }
 }
 
-// 일기 생성 중 다이얼로그
-@Composable
-private fun ProcessingDialog(
-    isWaitingForAnalyze: Boolean
-) {
-    Dialog(onDismissRequest = { }) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .padding(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(48.dp),
-                    color = Color.Black
-                )
-                Text(
-                    text = if (isWaitingForAnalyze) {
-                        "사진 분석을 기다리고 있어요..."
-                    } else {
-                        "일기를 생성하고 있어요..."
-                    },
-                    fontSize = 18.sp,
-                    color = Color.Black,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
