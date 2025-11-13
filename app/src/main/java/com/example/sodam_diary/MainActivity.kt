@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import com.example.sodam_diary.ui.theme.AppBackground
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -125,7 +126,7 @@ fun AppNavigation() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(navController: NavHostController) {
-    val titleFocusRequester = remember { FocusRequester() }
+    val cameraButtonFocus = remember { FocusRequester() }
     // 시각장애인용 고대비 디자인: 검은 배경 + status bar 영역
     Box(
         modifier = Modifier
@@ -151,26 +152,19 @@ fun MainScreen(navController: NavHostController) {
             // 상단 여백 (하단보다 작게)
             Spacer(modifier = Modifier.weight(0.7f))
             
-            // 앱 제목
-            Box(
-                modifier = Modifier
-                    .semantics {
-                        contentDescription = "소담일기, 사진을 읽어드릴게요"
-                    }
-                    .focusRequester(titleFocusRequester)
-                    .focusable()
-            ) {
-                Text(
-                    text = "소담일기",
-                    fontSize = 52.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-            }
+            // 앱 제목 (TalkBack에서 완전히 숨김)
+            Text(
+                text = "소담일기",
+                fontSize = 52.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.clearAndSetSemantics { }
+            )
+            
             LaunchedEffect(Unit) { 
                 kotlinx.coroutines.delay(100) // 화면 안정화 대기
-                titleFocusRequester.requestFocus() 
+                cameraButtonFocus.requestFocus() 
             }
 
             // 타이틀과 버튼 사이 간격
@@ -188,6 +182,8 @@ fun MainScreen(navController: NavHostController) {
                 },
                 modifier = Modifier
                     .size(width = 160.dp, height = 100.dp)
+                    .focusRequester(cameraButtonFocus)
+                    .focusable()
                     .semantics { contentDescription = "카메라로 사진 촬영하기" },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,

@@ -185,6 +185,18 @@ fun PhotoDetailScreen(
     
     // 시각장애인용 고대비 디자인 + status bar 대응
     val descriptionFocus = remember { FocusRequester() }
+    
+    // 로딩 완료 후 포커스 재요청
+    LaunchedEffect(isLoading, photoEntity) {
+        if (!isLoading && photoEntity != null) {
+            kotlinx.coroutines.delay(300) // 렌더링 안정화 대기
+            try {
+                descriptionFocus.requestFocus()
+            } catch (_: Exception) {
+                // 포커스 실패 무시
+            }
+        }
+    }
 
     ScreenLayout(
         showHomeButton = true,
@@ -198,6 +210,8 @@ fun PhotoDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(32.dp)
+                    .focusRequester(descriptionFocus)
+                    .focusable()
                     .semantics { 
                         traversalIndex = 0f
                         contentDescription = "인공지능이 사진을 분석하고 일기를 작성하고 있습니다. 잠시만 기다려주세요."
