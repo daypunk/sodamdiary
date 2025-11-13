@@ -68,12 +68,12 @@ interface PhotoDao {
     suspend fun deletePhoto(photo: PhotoEntity)
     
     /**
-     * 음성 검색: caption 또는 tags에 검색어가 포함된 사진들 조회
-     * @param query 검색어 (예: "산", "바다")
+     * 음성 검색: imageDescription, tags, userDescription, locationName에서 검색
+     * @param query 검색어 (예: "산", "바다", "행복한")
      */
     @Query("""
         SELECT * FROM photos 
-        WHERE caption LIKE '%' || :query || '%' 
+        WHERE imageDescription LIKE '%' || :query || '%'
         OR tags LIKE '%' || :query || '%'
         OR userDescription LIKE '%' || :query || '%'
         OR locationName LIKE '%' || :query || '%'

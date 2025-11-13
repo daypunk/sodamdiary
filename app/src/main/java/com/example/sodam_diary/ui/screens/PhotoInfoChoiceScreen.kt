@@ -88,11 +88,8 @@ fun PhotoInfoChoiceScreen(
             try {
                 val photoFile = File(decodedPath)
                 if (photoFile.exists()) {
-                    // 1단계: BLIP 캡션 분석
+                    // 1단계: BLIP 캡션 분석 (TalkBack 안내 제거)
                     captionResult = photoRepository.analyzeImageForCaption(decodedPath)
-                    if (captionResult != null) {
-                        view.announceForAccessibility("사진 분석이 완료되었습니다")
-                    }
                 }
             } catch (e: Exception) {
                 captionResult = null
@@ -105,76 +102,20 @@ fun PhotoInfoChoiceScreen(
     // VoiceRecorder 콜백 설정
     DisposableEffect(Unit) {
         voiceRecorder.setCallbacks(
-            onTranscription = { text ->
+            { text ->
                 transcribedText = text
                 isRecording = false
-                view.announceForAccessibility("음성 인식이 완료되었습니다. $text")
+                // TalkBack 간섭 방지: 음성 인식 완료 안내 제거
             },
-            onError = { error ->
+            { error ->
                 isRecording = false
-                view.announceForAccessibility(error)
-                // 오류 발생 시 "건너뛰기"처럼 동작 (사용자 입력 없이 진행)
                 showDialog = false
-                isGeneratingDiary = true
-                
-                coroutineScope.launch {
-                    try {
-                        // analyze 완료 대기
-                        if (isAnalyzing) {
-                            view.announceForAccessibility("사진 분석을 기다리고 있습니다")
-                            while (isAnalyzing) {
-                                kotlinx.coroutines.delay(100)
-                            }
-                        }
-                        
-                        view.announceForAccessibility("일기를 적고 있어요")
-                        
-                        // 위치 정보 가져오기
-                        val locationData = locationHelper.getCurrentLocation()
-                        
-                        // generate API 호출 (userInput은 null)
-                        val diaryResult = if (captionResult != null) {
-                            photoRepository.generateDiaryWithLLM(
-                                userInput = null,
-                                blipCaption = captionResult,
-                                latitude = locationData?.latitude,
-                                longitude = locationData?.longitude,
-                                location = locationData?.locationName
-                            )
-                        } else {
-                            null
-                        }
-                        
-                        // DB에 저장 (userVoicePath는 항상 null)
-                        val result = photoRepository.savePhotoLocal(
-                            photoPath = decodedPath,
-                            userDescription = null,
-                            userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
-                            latitude = locationData?.latitude,
-                            longitude = locationData?.longitude,
-                            locationName = locationData?.locationName,
-                            captureDate = System.currentTimeMillis(),
-                            caption = captionResult,
-                            imageDescription = diaryResult?.first,
-                            tags = diaryResult?.second
-                        )
-                        
-                        if (result.isSuccess) {
-                            view.announceForAccessibility("일기가 저장되었습니다")
-                            val encodedPath = Uri.encode(decodedPath)
-                            navController.navigate("photo_detail/$encodedPath") {
-                                popUpTo("main") { inclusive = false }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        view.announceForAccessibility("일기 생성에 실패했습니다")
-                    } finally {
-                        isGeneratingDiary = false
-                    }
-                }
+                // STT 실패 시 화면 전환하지 않음 - 그냥 다이얼로그만 닫기
+                errorMessage = error
+                view.announceForAccessibility(error)
             },
-            onReady = {
-                view.announceForAccessibility("녹음이 시작되었습니다. 말씀해주세요")
+            {
+                // TalkBack 간섭 방지: 녹음 시작 안내는 버튼 클릭 시에만
             }
         )
         
@@ -193,30 +134,39 @@ fun PhotoInfoChoiceScreen(
         contentFocusLabel = "사진에 추가 정보 입력"
     ) {
         if (isGeneratingDiary) {
-            // 일기 생성 중 로딩 화면
-            Column(
+            // 일기 생성 중 로딩 화면 (TalkBack 간섭 최소화)
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(32.dp)
                     .semantics { 
                         traversalIndex = 0f
-                        contentDescription = "인공지능이 사진과 말씀하신 내용을 바탕으로 일기를 작성하고 있습니다. 잠시만 기다려주세요."
+                        contentDescription = "일기를 적고 있어요"
                     },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(60.dp)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "일기를 적고 있어요",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // CircularProgressIndicator를 TalkBack에서 숨김
+                    Box(modifier = Modifier.semantics(mergeDescendants = true) { }) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(60.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    // Text도 TalkBack에서 숨김 (상위 contentDescription만 읽힘)
+                    Box(modifier = Modifier.semantics(mergeDescendants = true) { }) {
+                        Text(
+                            text = "일기를 적고 있어요",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
             }
         } else {
         Column(
@@ -309,16 +259,10 @@ fun PhotoInfoChoiceScreen(
                         
                         coroutineScope.launch {
                             try {
-                                // 1. analyze 완료 대기
-                                if (isAnalyzing) {
-                                    view.announceForAccessibility("사진 분석을 기다리고 있습니다")
-                                    // analyze가 완료될 때까지 대기
-                                    while (isAnalyzing) {
-                                        kotlinx.coroutines.delay(100)
-                                    }
+                                // 1. analyze 완료 대기 (TalkBack 안내 제거)
+                                while (isAnalyzing) {
+                                    kotlinx.coroutines.delay(100)
                                 }
-                                
-                                view.announceForAccessibility("일기를 적고 있어요")
                                 
                                 // 2. 위치 정보 가져오기
                                 val locationData = locationHelper.getCurrentLocation()
@@ -351,7 +295,7 @@ fun PhotoInfoChoiceScreen(
                                 )
                                 
                                 if (result.isSuccess) {
-                                    view.announceForAccessibility("일기가 저장되었습니다")
+                                    // TalkBack 안내 제거
                         val encodedPath = Uri.encode(decodedPath)
                         navController.navigate("photo_detail/$encodedPath") {
                             popUpTo("main") { inclusive = false }
@@ -388,15 +332,10 @@ fun PhotoInfoChoiceScreen(
             
             coroutineScope.launch {
                 try {
-                    // 1. analyze 완료 대기
-                    if (isAnalyzing) {
-                        view.announceForAccessibility("사진 분석을 기다리고 있습니다")
-                        while (isAnalyzing) {
-                            kotlinx.coroutines.delay(100)
-                        }
+                    // 1. analyze 완료 대기 (TalkBack 안내 제거)
+                    while (isAnalyzing) {
+                        kotlinx.coroutines.delay(100)
                     }
-                    
-                    view.announceForAccessibility("일기를 적고 있어요")
                     
                     // 2. 위치 정보 가져오기
                     val locationData = locationHelper.getCurrentLocation()
@@ -425,7 +364,7 @@ fun PhotoInfoChoiceScreen(
                     )
                     
                     if (result.isSuccess) {
-                        view.announceForAccessibility("일기가 저장되었습니다")
+                        // TalkBack 안내 제거
                         
                         // 5. PhotoDetailScreen으로 이동
                         val encodedPath = Uri.encode(decodedPath)
@@ -476,8 +415,6 @@ private fun SimpleRecordingDialog(
     onStop: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val view = LocalView.current
-    
     Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -486,7 +423,7 @@ private fun SimpleRecordingDialog(
             Button(
                 onClick = {
                     onStop()
-                    view.announceForAccessibility("녹음을 중지했습니다. 말씀하신 내용을 글자로 바꾸고 있습니다")
+                    // TalkBack 간섭 방지: 중지 안내 제거 (사용자가 버튼 누른 것만으로 충분)
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.8f)

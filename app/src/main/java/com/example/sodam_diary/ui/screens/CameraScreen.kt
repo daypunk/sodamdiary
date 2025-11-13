@@ -148,6 +148,12 @@ fun CameraContent(
     var cameraError by remember { mutableStateOf<String?>(null) }
     
     val captureButtonFocus = remember { FocusRequester() }
+    
+    // 화면 진입 시 촬영 버튼에 포커스 요청
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(200) // 카메라 초기화 대기
+        captureButtonFocus.requestFocus()
+    }
 
     ScreenLayout(
         showHomeButton = true,
@@ -272,7 +278,7 @@ fun CameraContent(
                     .focusRequester(captureButtonFocus)
                     .focusable()
                     .semantics { 
-                        contentDescription = "촬영 버튼. 이 버튼을 누르면 사진이 촬영됩니다. 카메라가 향한 방향의 사진이 저장됩니다."
+                        contentDescription = "촬영"
                     },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.White,

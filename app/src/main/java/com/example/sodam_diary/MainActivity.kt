@@ -158,13 +158,15 @@ fun MainScreen(navController: NavHostController) {
                 color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
-                    .semantics {
+                    .semantics(mergeDescendants = true) {
                         contentDescription = "소담일기, 사진을 읽어드릴게요"
-                        heading()
                     }
                     .focusRequester(titleFocusRequester)
             )
-            LaunchedEffect(Unit) { titleFocusRequester.requestFocus() }
+            LaunchedEffect(Unit) { 
+                kotlinx.coroutines.delay(100) // 화면 안정화 대기
+                titleFocusRequester.requestFocus() 
+            }
 
             // 타이틀과 버튼 사이 간격
             Spacer(modifier = Modifier.height(60.dp))

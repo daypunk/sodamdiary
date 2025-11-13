@@ -323,11 +323,18 @@ class PhotoRepository(context: Context) {
     }
     
     /**
-     * 음성 검색: caption, tags, userDescription, locationName에서 검색
+     * 음성 검색: imageDescription, tags, userDescription, locationName에서 검색
      */
     suspend fun searchPhotosByVoice(query: String): List<PhotoEntity> {
-        Log.d("PhotoRepository", "🔍 음성 검색 시작 - query: $query")
-        val results = photoDao.searchByVoiceQuery(query)
+        val trimmedQuery = query.trim()
+        Log.d("PhotoRepository", "🔍 음성 검색 시작 - query: '$trimmedQuery'")
+        
+        if (trimmedQuery.isEmpty()) {
+            Log.d("PhotoRepository", "⚠️ 빈 검색어 - 빈 결과 반환")
+            return emptyList()
+        }
+        
+        val results = photoDao.searchByVoiceQuery(trimmedQuery)
         Log.d("PhotoRepository", "🔍 검색 결과: ${results.size}개")
         return results
     }

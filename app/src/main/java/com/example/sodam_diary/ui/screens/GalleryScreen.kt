@@ -103,20 +103,20 @@ fun GalleryScreen(navController: NavController) {
     // VoiceRecorder 콜백 설정 (음성 검색용)
     DisposableEffect(Unit) {
         searchVoiceRecorder.setCallbacks(
-            onTranscription = { text ->
+            { text ->
                 searchQuery = text
                 isSearchRecording = false
-                view.announceForAccessibility("검색어: $text")
+                // TalkBack 간섭 방지: 검색어 안내 제거
             },
-            onError = { error ->
+            { error ->
                 isSearchRecording = false
                 view.announceForAccessibility(error)
                 // 오류 발생 시 다이얼로그 닫기
                 showSearchDialog = false
                 searchQuery = ""
             },
-            onReady = {
-                view.announceForAccessibility("녹음이 시작되었습니다. 검색어를 말씀해주세요")
+            {
+                // TalkBack 간섭 방지: 녹음 시작 안내 제거
             }
         )
         
@@ -425,12 +425,11 @@ fun GalleryScreen(navController: NavController) {
                     Button(
                         onClick = { 
                             if (micPermissionGranted.value) {
-                                // 즉시 녹음 시작
+                                // 즉시 녹음 시작 (TalkBack 간섭 방지: 안내 제거)
                                 searchQuery = ""
                                 currentSearchVoicePath = searchVoiceRecorder.startRecording()
                                 isSearchRecording = true
                                 showSearchDialog = true
-                                view.announceForAccessibility("녹음이 시작되었습니다. 검색할 내용을 말씀해주세요")
                             } else {
                                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
@@ -464,7 +463,7 @@ fun GalleryScreen(navController: NavController) {
     LaunchedEffect(searchQuery) {
         if (searchQuery.isNotBlank() && !isSearchRecording && showSearchDialog && !isSearching) {
             isSearching = true
-            view.announceForAccessibility("검색을 시작합니다")
+            // TalkBack 간섭 방지: 검색 시작 안내 제거
             
             coroutineScope.launch {
                 try {
@@ -473,7 +472,7 @@ fun GalleryScreen(navController: NavController) {
                         view.announceForAccessibility("검색 결과가 없습니다")
                         isSearchMode = false // 결과 없으면 검색 모드 해제
                     } else {
-                        view.announceForAccessibility("${results.size}개의 사진을 찾았습니다")
+                        // TalkBack 간섭 방지: 검색 결과 개수 안내 제거
                         photos = results
                         isSearchMode = true // 검색 모드 활성화
                     }
@@ -610,7 +609,7 @@ private fun SimpleRecordingDialog(
             Button(
                 onClick = {
                     onStop()
-                    view.announceForAccessibility("녹음을 중지했습니다")
+                    // TalkBack 간섭 방지: 중지 안내 제거
                 },
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
