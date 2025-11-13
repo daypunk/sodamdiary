@@ -161,10 +161,7 @@ fun SearchResultScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(32.dp)
-                                .semantics { 
-                                    contentDescription = "검색 결과 0개. 해당하는 사진이 없어요"
-                                },
+                                .padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
@@ -176,15 +173,18 @@ fun SearchResultScreen(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .padding(bottom = 16.dp)
-                                    .semantics { traversalIndex = 0f }
+                                    .focusRequester(resultCountFocus)
+                                    .focusable()
+                                    .semantics { 
+                                        contentDescription = "검색 결과 0개. 해당하는 사진이 없어요"
+                                    }
                             )
                             Text(
                                 text = "해당하는 사진이 없어요",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.semantics { traversalIndex = 0f }
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -234,7 +234,9 @@ fun SearchResultScreen(
                                                 val sortedPhotos = searchResults.sortedByDescending { it.captureDate }
                                                 val photoIdsString = sortedPhotos.joinToString(",") { it.id.toString() }
                                                 val encodedPhotoIds = Uri.encode(photoIdsString)
-                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds")
+                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
+                                                    launchSingleTop = true
+                                                }
                                             }
                                         )
                                     }

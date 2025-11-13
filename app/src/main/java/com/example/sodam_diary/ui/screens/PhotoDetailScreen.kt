@@ -280,19 +280,20 @@ fun PhotoDetailScreen(
                             // 왼쪽 화살표 (이전 사진)
                             IconButton(
                                 onClick = {
-                                    if (hasPrevious && photoIds != null) {
-                                        val prevPhotoId = photoIds[currentPhotoIndex - 1]
-                                        coroutineScope.launch {
-                                            val prevPhoto = PhotoRepository(context).getPhotoById(prevPhotoId)
-                                            if (prevPhoto != null) {
-                                                val encodedPath = Uri.encode(prevPhoto.photoPath)
-                                                val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
-                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
-                                                    popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                            if (hasPrevious && photoIds != null) {
+                                                val prevPhotoId = photoIds[currentPhotoIndex - 1]
+                                                coroutineScope.launch {
+                                                    val prevPhoto = PhotoRepository(context).getPhotoById(prevPhotoId)
+                                                    if (prevPhoto != null) {
+                                                        val encodedPath = Uri.encode(prevPhoto.photoPath)
+                                                        val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
+                                                        navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
+                                                            popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                                            launchSingleTop = true
+                                                        }
+                                                    }
                                                 }
                                             }
-                                        }
-                                    }
                                 },
                                 enabled = hasPrevious,
                                 modifier = Modifier
@@ -325,19 +326,20 @@ fun PhotoDetailScreen(
                             // 오른쪽 화살표 (다음 사진)
                             IconButton(
                                 onClick = {
-                                    if (hasNext && photoIds != null) {
-                                        val nextPhotoId = photoIds[currentPhotoIndex + 1]
-                                        coroutineScope.launch {
-                                            val nextPhoto = PhotoRepository(context).getPhotoById(nextPhotoId)
-                                            if (nextPhoto != null) {
-                                                val encodedPath = Uri.encode(nextPhoto.photoPath)
-                                                val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
-                                                navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
-                                                    popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                            if (hasNext && photoIds != null) {
+                                                val nextPhotoId = photoIds[currentPhotoIndex + 1]
+                                                coroutineScope.launch {
+                                                    val nextPhoto = PhotoRepository(context).getPhotoById(nextPhotoId)
+                                                    if (nextPhoto != null) {
+                                                        val encodedPath = Uri.encode(nextPhoto.photoPath)
+                                                        val encodedPhotoIds = Uri.encode(photoIds.joinToString(","))
+                                                        navController.navigate("photo_detail/$encodedPath?photoIds=$encodedPhotoIds") {
+                                                            popUpTo("photo_detail/{imagePath}") { inclusive = true }
+                                                            launchSingleTop = true
+                                                        }
+                                                    }
                                                 }
                                             }
-                                        }
-                                    }
                                 },
                                 enabled = hasNext,
                                 modifier = Modifier

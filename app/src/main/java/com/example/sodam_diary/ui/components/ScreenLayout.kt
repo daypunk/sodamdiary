@@ -56,7 +56,6 @@ fun ScreenLayout(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val view = LocalView.current
-    val contentFocusRequester = remember { FocusRequester() }
     var suppressHeaderA11y by remember { mutableStateOf(suppressHeaderUntilFocused) }
     // 화면 진입 시 안내 후 메인 컨텐츠로 초기 포커스 강제 이동
     androidx.compose.runtime.LaunchedEffect(screenAnnouncement, initialFocusRequester) {
@@ -69,19 +68,13 @@ fun ScreenLayout(
             // 안내가 없는 경우에도 렌더링 안정화를 위해 소폭 지연
             delay(100)
         }
-        // 페이지가 제공한 명시적 초기 포커스 대상이 있으면 우선 사용
-        val focused = if (initialFocusRequester != null) {
+        // 페이지가 제공한 명시적 초기 포커스 대상이 있으면 사용
+        if (initialFocusRequester != null) {
             try {
                 initialFocusRequester.requestFocus()
-                true
             } catch (_: IllegalStateException) {
-                false
+                // 포커스 실패 시 무시 (content 내부 첫 요소가 자연스럽게 포커스됨)
             }
-        } else false
-
-        if (!focused) {
-            // 안전한 기본 컨텐츠 포커스
-            contentFocusRequester.requestFocus()
         }
         // 포커스 적용 이후 헤더를 조금 더 늦게 활성화하여 초기 포커스가 헤더로 이동하는 것을 방지
         delay(500)
@@ -100,13 +93,8 @@ fun ScreenLayout(
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(top = if (showHomeButton || showBackButton || actionIcon != null) 56.dp else 0.dp)
-                .focusRequester(contentFocusRequester)
-                .focusable()
                 .semantics {
                     traversalIndex = 0f
-                    if (!contentFocusLabel.isNullOrBlank()) {
-                        contentDescription = contentFocusLabel
-                    }
                 }
         ) {
             content()

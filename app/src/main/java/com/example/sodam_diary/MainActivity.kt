@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -151,18 +152,22 @@ fun MainScreen(navController: NavHostController) {
             Spacer(modifier = Modifier.weight(0.7f))
             
             // 앱 제목
-            Text(
-                text = "소담일기",
-                fontSize = 52.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
+            Box(
                 modifier = Modifier
-                    .semantics(mergeDescendants = true) {
+                    .semantics {
                         contentDescription = "소담일기, 사진을 읽어드릴게요"
                     }
                     .focusRequester(titleFocusRequester)
-            )
+                    .focusable()
+            ) {
+                Text(
+                    text = "소담일기",
+                    fontSize = 52.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
             LaunchedEffect(Unit) { 
                 kotlinx.coroutines.delay(100) // 화면 안정화 대기
                 titleFocusRequester.requestFocus() 

@@ -149,8 +149,8 @@ fun CameraContent(
     
     val captureButtonFocus = remember { FocusRequester() }
     
-    // 화면 진입 시 촬영 버튼에 포커스 요청
-    LaunchedEffect(Unit) {
+    // 화면 진입 시 촬영 버튼에 포커스 요청 (매번 요청)
+    LaunchedEffect(navController.currentBackStackEntry) {
         kotlinx.coroutines.delay(200) // 카메라 초기화 대기
         captureButtonFocus.requestFocus()
     }
