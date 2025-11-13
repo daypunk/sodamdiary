@@ -163,7 +163,7 @@ fun MainScreen(navController: NavHostController) {
             )
             
             LaunchedEffect(Unit) { 
-                kotlinx.coroutines.delay(100) // 화면 안정화 대기
+                kotlinx.coroutines.delay(500) // TalkBack 안정화 대기 (그리드 메시지 방지)
                 cameraButtonFocus.requestFocus() 
             }
 

@@ -53,12 +53,13 @@ fun ScreenLayout(
     suppressHeaderUntilFocused: Boolean = true,
     contentFocusLabel: String? = "화면의 주요 내용",
     screenAnnouncement: String? = null,
+    backStackEntryId: String? = null, // 백스택 변경 감지용
     content: @Composable ColumnScope.() -> Unit
 ) {
     val view = LocalView.current
     var suppressHeaderA11y by remember { mutableStateOf(suppressHeaderUntilFocused) }
     // 화면 진입 시 안내 후 메인 컨텐츠로 초기 포커스 강제 이동
-    androidx.compose.runtime.LaunchedEffect(screenAnnouncement, initialFocusRequester) {
+    androidx.compose.runtime.LaunchedEffect(screenAnnouncement, initialFocusRequester, backStackEntryId) {
         val announcement = screenAnnouncement?.takeIf { it.isNotBlank() }
         if (announcement != null) {
             view.announceForAccessibility(announcement)

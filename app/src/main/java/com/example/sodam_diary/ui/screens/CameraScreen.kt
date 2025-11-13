@@ -149,17 +149,17 @@ fun CameraContent(
     
     val captureButtonFocus = remember { FocusRequester() }
     
-    // 화면 진입 시 촬영 버튼에 포커스 요청 (매번 요청)
-    LaunchedEffect(navController.currentBackStackEntry) {
-        kotlinx.coroutines.delay(200) // 카메라 초기화 대기
-        captureButtonFocus.requestFocus()
-    }
+    // 백스택 변경 감지용 키
+    val backStackEntryId = navController.currentBackStackEntry?.id
 
     ScreenLayout(
         showHomeButton = true,
         onHomeClick = { navController.popBackStack() },
         initialFocusRequester = captureButtonFocus,
-        contentFocusLabel = "카메라 미리보기"
+        initialFocusDelayMs = 200, // 카메라 초기화 대기
+        contentFocusLabel = "카메라 미리보기",
+        screenAnnouncement = null,
+        backStackEntryId = backStackEntryId // 백스택 변경 시 포커스 재요청
     ) {
         Box(
             modifier = Modifier
