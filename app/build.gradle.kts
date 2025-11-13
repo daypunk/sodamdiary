@@ -11,7 +11,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.sodam_diary"
+        applicationId = "com.sodamdiary.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
