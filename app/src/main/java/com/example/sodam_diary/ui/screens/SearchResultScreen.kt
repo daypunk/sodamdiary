@@ -161,23 +161,30 @@ fun SearchResultScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(32.dp),
+                                .padding(32.dp)
+                                .semantics { 
+                                    contentDescription = "검색 결과 0개. 해당하는 사진이 없어요"
+                                },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
+                            Text(
+                                text = "검색 결과 0개",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .semantics { traversalIndex = 0f }
+                            )
                             Text(
                                 text = "해당하는 사진이 없어요",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            Text(
-                                text = "다른 조건으로 검색해보세요",
-                                fontSize = 16.sp,
-                                color = Color.White.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center
+                                modifier = Modifier.semantics { traversalIndex = 0f }
                             )
                         }
                     }
@@ -187,7 +194,8 @@ fun SearchResultScreen(
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp)
+                                .semantics(mergeDescendants = false) { },
                             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
                         ) {
                             // 결과 개수 표시
@@ -289,7 +297,17 @@ private fun SearchResultThumbnail(
     onClick: () -> Unit
 ) {
     val bitmap = remember(photo.photoPath) {
-        photoManager.loadRotatedBitmap(photo.photoPath)
+        photoManager.loadThumbnail(photo.photoPath, targetSize = 400)
+    }
+    
+    // TalkBack용 설명 생성 (날짜 + 일기 내용 요약)
+    val description = buildString {
+        append(formatSearchResultDate(photo.captureDate))
+        append("에 찍은 사진")
+        photo.imageDescription?.let { diary ->
+            val summary = if (diary.length > 50) diary.take(50) + "..." else diary
+            append(". $summary")
+        }
     }
     
     Box(
@@ -299,7 +317,7 @@ private fun SearchResultThumbnail(
             .background(Color.Gray.copy(alpha = 0.3f))
             .clickable { onClick() }
             .semantics { 
-                contentDescription = "검색 결과 사진, 촬영일: ${formatSearchResultDate(photo.captureDate)}"
+                contentDescription = description
             },
         contentAlignment = Alignment.Center
     ) {

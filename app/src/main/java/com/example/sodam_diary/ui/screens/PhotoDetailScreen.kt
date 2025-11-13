@@ -397,6 +397,7 @@ fun PhotoDetailScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(state)
+                            .semantics(mergeDescendants = false) { }
                     ) {
                         photoEntity?.let { photo ->
                             val dateLine = formatDateOnly(photo.captureDate)

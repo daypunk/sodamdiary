@@ -236,27 +236,57 @@ fun GalleryScreen(navController: NavController) {
                     }
                     
                     photos.isEmpty() -> {
-                        // 빈 갤러리 화면
+                        // 빈 갤러리 / 검색 결과 없음 화면
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(32.dp),
+                                .padding(32.dp)
+                                .semantics { 
+                                    contentDescription = if (isSearchMode) {
+                                        "검색 결과 0개. 해당하는 사진이 없어요"
+                                    } else {
+                                        "아직 저장된 사진이 없습니다. 카메라로 첫 번째 사진을 촬영해보세요"
+                                    }
+                                },
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Text(
-                                text = "아직 저장된 사진이 없습니다",
-                                fontSize = 20.sp,
-                                color = Color.White,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            Text(
-                                text = "카메라로 첫 번째 사진을 촬영해보세요!",
-                                fontSize = 16.sp,
-                                color = Color.White.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center
-                            )
+                            if (isSearchMode) {
+                                // 검색 결과 없음
+                                Text(
+                                    text = "검색 결과 0개",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .padding(bottom = 16.dp)
+                                        .semantics { traversalIndex = 0f }
+                                )
+                                Text(
+                                    text = "해당하는 사진이 없어요",
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.semantics { traversalIndex = 0f }
+                                )
+                            } else {
+                                // 빈 갤러리
+                                Text(
+                                    text = "아직 저장된 사진이 없습니다",
+                                    fontSize = 20.sp,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                                Text(
+                                    text = "카메라로 첫 번째 사진을 촬영해보세요!",
+                                    fontSize = 16.sp,
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                     
@@ -265,7 +295,8 @@ fun GalleryScreen(navController: NavController) {
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp)
+                                .semantics(mergeDescendants = false) { },
                             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // 상단 여백 축소, 하단 버튼 공간 확보
                         ) {
                             items(groupedPhotos) { (monthYear, monthPhotos) ->
@@ -468,14 +499,8 @@ fun GalleryScreen(navController: NavController) {
             coroutineScope.launch {
                 try {
                     val results = photoRepository.searchPhotosByVoice(searchQuery)
-                    if (results.isEmpty()) {
-                        view.announceForAccessibility("검색 결과가 없습니다")
-                        isSearchMode = false // 결과 없으면 검색 모드 해제
-                    } else {
-                        // TalkBack 간섭 방지: 검색 결과 개수 안내 제거
-                        photos = results
-                        isSearchMode = true // 검색 모드 활성화
-                    }
+                    photos = results
+                    isSearchMode = true // 검색 모드 활성화 (결과 없어도 유지)
                 } catch (e: Exception) {
                     view.announceForAccessibility("검색에 실패했습니다")
                     isSearchMode = false
@@ -526,7 +551,17 @@ private fun PhotoThumbnail(
     onClick: () -> Unit
 ) {
     val bitmap = remember(photo.photoPath) {
-        photoManager.loadRotatedBitmap(photo.photoPath)
+        photoManager.loadThumbnail(photo.photoPath, targetSize = 400)
+    }
+    
+    // TalkBack용 설명 생성 (날짜 + 일기 내용 요약)
+    val description = buildString {
+        append(formatThumbnailDate(photo.captureDate))
+        append("에 찍은 사진")
+        photo.imageDescription?.let { diary ->
+            val summary = if (diary.length > 50) diary.take(50) + "..." else diary
+            append(". $summary")
+        }
     }
     
     Box(
@@ -536,7 +571,7 @@ private fun PhotoThumbnail(
             .background(Color.Gray.copy(alpha = 0.3f))
             .clickable { onClick() }
             .semantics { 
-                contentDescription = "사진보기 버튼, ${formatThumbnailDate(photo.captureDate)}에 찍은 사진이에요"
+                contentDescription = description
             },
         contentAlignment = Alignment.Center
     ) {

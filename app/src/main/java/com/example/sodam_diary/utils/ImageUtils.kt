@@ -94,6 +94,59 @@ open class PhotoManager(private val context: Context) {
     fun loadRotatedBitmap(imagePath: String): Bitmap? {
         return loadRotatedBitmap(File(imagePath))
     }
+    
+    /**
+     * 썸네일용 리사이징된 이미지 로드 (성능 최적화)
+     * @param imageFile 이미지 파일
+     * @param targetSize 목표 크기 (px)
+     */
+    fun loadThumbnail(imageFile: File, targetSize: Int = 300): Bitmap? {
+        try {
+            // 1. 이미지 크기만 먼저 측정 (메모리 로드 없음)
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(imageFile.absolutePath, options)
+            
+            // 2. 샘플링 비율 계산 (원본 크기 / 목표 크기)
+            val scale = maxOf(
+                options.outWidth / targetSize,
+                options.outHeight / targetSize
+            )
+            
+            // 3. 리사이징하여 로드 (메모리 절약)
+            val loadOptions = BitmapFactory.Options().apply {
+                inSampleSize = scale.coerceAtLeast(1)
+            }
+            val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath, loadOptions) ?: return null
+            
+            // 4. EXIF 회전 정보 적용
+            val exif = ExifInterface(imageFile.absolutePath)
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            }
+            
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            
+        } catch (e: Exception) {
+            return null
+        }
+    }
+    
+    /**
+     * 경로로부터 썸네일 로드
+     */
+    fun loadThumbnail(imagePath: String, targetSize: Int = 300): Bitmap? {
+        return loadThumbnail(File(imagePath), targetSize)
+    }
 }
 
 // 호환성을 위한 전역 함수
