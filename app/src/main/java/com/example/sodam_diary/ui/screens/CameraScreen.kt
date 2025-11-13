@@ -156,7 +156,7 @@ fun CameraContent(
         showHomeButton = true,
         onHomeClick = { navController.popBackStack() },
         initialFocusRequester = captureButtonFocus,
-        initialFocusDelayMs = 200, // 카메라 초기화 대기
+        initialFocusDelayMs = 1000, // 카메라 초기화 충분히 대기
         contentFocusLabel = "카메라 미리보기",
         screenAnnouncement = null,
         backStackEntryId = backStackEntryId // 백스택 변경 시 포커스 재요청

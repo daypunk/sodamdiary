@@ -66,8 +66,8 @@ fun ScreenLayout(
             // TalkBack 안내 읽기 직후 포커스 적용을 위해 약간 지연
             delay(initialFocusDelayMs)
         } else {
-            // 안내가 없는 경우에도 렌더링 안정화를 위해 소폭 지연
-            delay(100)
+            // 안내가 없는 경우에도 렌더링 안정화를 위해 지연 (initialFocusDelayMs 사용)
+            delay(initialFocusDelayMs)
         }
         // 페이지가 제공한 명시적 초기 포커스 대상이 있으면 사용
         if (initialFocusRequester != null) {
