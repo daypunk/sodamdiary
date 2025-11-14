@@ -18,6 +18,16 @@ android {
         versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        // local.properties에서 Naver CLOVA API 키 읽기
+        val properties = org.jetbrains.kotlin.konan.properties.Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.inputStream())
+        }
+        
+        buildConfigField("String", "NAVER_CLOVA_CLIENT_ID", "\"${properties.getProperty("naver.clova.client.id", "")}\"")
+        buildConfigField("String", "NAVER_CLOVA_CLIENT_SECRET", "\"${properties.getProperty("naver.clova.client.secret", "")}\"")
     }
 
     buildTypes {
@@ -38,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -76,6 +87,9 @@ dependencies {
     
     // 위치 서비스
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    
+    // Naver CLOVA Speech SDK (공식 문서와 호환되는 버전)
+    implementation("com.naver.speech.clientapi:naverspeech-ncp-sdk-android:1.1.8")
     
     // 권한 처리
     implementation("androidx.activity:activity-ktx:1.8.2")
