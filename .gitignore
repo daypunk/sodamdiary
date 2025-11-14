@@ -16,3 +16,4 @@ local.properties
 
 # Cursor IDE
 .cursorrules
+.cursor/
