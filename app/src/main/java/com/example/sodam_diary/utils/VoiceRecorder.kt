@@ -155,10 +155,19 @@ class VoiceRecorder(private val context: Context) {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                // 침묵 감지 시간 연장 (기본 2초 → 5초)
+                
+                // ⚠️ 주의: 아래 설정들은 Google Speech Services에서 대부분 무시됩니다
+                // Google은 내부적으로 침묵 감지 ~1-2초, 전체 타임아웃 ~6-8초를 강제 적용
+                // 이는 서버 부하 방지와 배터리 절약을 위한 정책입니다
+                
+                // 침묵 감지 시간 (실제로는 1-2초로 제한됨)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
-                // 말하기 시작 전 대기 시간 연장 (기본 5초 → 8초)
+                // 말하기 시작 전 대기 시간 (실제로는 6-8초로 제한됨)
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
+                
+                // 추가 시도: 일부 기기에서 작동할 수 있는 추가 파라미터
+                putExtra("android.speech.extra.DICTATION_MODE", true)
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false) // 온라인 모드 강제
             }
             
             speechRecognizer?.startListening(intent)

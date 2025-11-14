@@ -391,7 +391,7 @@ fun PhotoDetailScreen(
 
                 // 하단 섹션: 텍스트와 버튼 (높이 제한)
                 Surface(
-                    color = AppSurfaceBackground,
+                    color = Color.White,
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -427,7 +427,7 @@ fun PhotoDetailScreen(
                             Text(
                                 text = combined,
                                 fontSize = 18.sp,
-                                color = Color.White,
+                                color = Color.Black,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .focusRequester(descriptionFocus)
@@ -508,8 +508,8 @@ fun PhotoDetailScreen(
                                         contentDescription = "갤러리로 버튼. 다른 사진들을 보기 위해 갤러리 화면으로 돌아갑니다."
                                     },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = AppBackground
+                                    containerColor = AppBackground,
+                                    contentColor = Color.White
                                 ),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                                 elevation = ButtonDefaults.buttonElevation(
