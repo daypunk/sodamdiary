@@ -462,9 +462,9 @@ fun GalleryScreen(navController: NavController) {
                     Button(
                         onClick = { 
                             if (micPermissionGranted.value) {
-                                // 즉시 녹음 시작 (TalkBack 간섭 방지: 안내 제거)
+                                // 즉시 STT 시작 (녹음 비활성화 - 검색은 음성 파일 불필요)
                                 searchQuery = ""
-                                currentSearchVoicePath = searchVoiceRecorder.startRecording()
+                                searchVoiceRecorder.startRecording(enableRecording = false)
                                 isSearchRecording = true
                                 showSearchDialog = true
                             } else {

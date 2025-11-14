@@ -99,12 +99,17 @@ fun PhotoInfoChoiceScreen(
         }
     }
     
+    // 녹음된 음성 파일 경로 저장
+    var recordedVoicePath by remember { mutableStateOf<String?>(null) }
+    
     // VoiceRecorder 콜백 설정
     DisposableEffect(Unit) {
         voiceRecorder.setCallbacks(
             { text ->
                 transcribedText = text
                 isRecording = false
+                // 녹음 완료 시 음성 파일 경로 저장
+                recordedVoicePath = voiceRecorder.getCurrentVoicePath()
                 // TalkBack 간섭 방지: 음성 인식 완료 안내 제거
             },
             { error ->
@@ -280,11 +285,11 @@ fun PhotoInfoChoiceScreen(
                                     null
                                 }
                                 
-                                // 4. DB에 저장 (userVoicePath는 항상 null)
+                                // 4. DB에 저장 (userVoicePath는 null)
                                 val result = photoRepository.savePhotoLocal(
                                     photoPath = decodedPath,
                                     userDescription = null,
-                                    userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
+                                    userVoicePath = null, // 건너뛰기는 음성 없음
                                     latitude = locationData?.latitude,
                                     longitude = locationData?.longitude,
                                     locationName = locationData?.locationName,
@@ -322,7 +327,7 @@ fun PhotoInfoChoiceScreen(
     }
     
     // 전사 완료 시 자동으로 다음 단계 진행 (다이얼로그 닫고 페이지 로딩으로 전환)
-    LaunchedEffect(transcribedText) {
+    LaunchedEffect(transcribedText, recordedVoicePath) {
         if (transcribedText.isNotBlank() && !isRecording && showDialog) {
             // 다이얼로그 닫기
             showDialog = false
@@ -349,11 +354,11 @@ fun PhotoInfoChoiceScreen(
                         location = locationData?.locationName
                     )
                     
-                    // 4. DB에 저장 (userVoicePath는 항상 null)
+                    // 4. DB에 저장 (녹음된 음성 파일 경로 포함)
                     val result = photoRepository.savePhotoLocal(
                         photoPath = decodedPath,
                         userDescription = transcribedText,
-                        userVoicePath = null, // STT만 사용, 음성 파일 저장 안 함
+                        userVoicePath = recordedVoicePath, // 녹음된 M4A 파일 경로
                         latitude = locationData?.latitude,
                         longitude = locationData?.longitude,
                         locationName = locationData?.locationName,

@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.example.sodam_diary.ui.theme.AppBackground
 import com.example.sodam_diary.ui.theme.AppSurfaceBackground
 import androidx.compose.ui.graphics.asImageBitmap
@@ -280,7 +281,7 @@ fun PhotoDetailScreen(
                 // 상단 여백
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 상단 사진 영역 (원본 비율 유지 + 화살표 네비게이션)
+                // 상단 사진 영역 (원본 비율 유지 + 화살표 네비게이션 + 재생 버튼 오버레이)
                 if (bitmap != null) {
                     if (showNavigation) {
                         // 갤러리/검색 결과에서 진입: 좌우 화살표 표시
@@ -323,19 +324,74 @@ fun PhotoDetailScreen(
                                 )
                             }
                             
-                            // 중앙 사진
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "저장된 사진이 표시됩니다",
+                            // 중앙 사진 (재생 버튼 오버레이)
+                            Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .heightIn(max = 320.dp)
                                     .padding(horizontal = 8.dp)
-                                    .semantics { 
-                                        traversalIndex = 2f
-                                    },
-                                contentScale = ContentScale.Fit
-                            )
+                            ) {
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = "저장된 사진이 표시됩니다",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .semantics { 
+                                            traversalIndex = 2f
+                                        },
+                                    contentScale = ContentScale.Fit
+                                )
+                                
+                                // 음성 파일이 있을 때만 재생 버튼 표시 (중앙 하단 오버레이)
+                                if (!photoEntity?.userVoicePath.isNullOrBlank()) {
+                                    FloatingActionButton(
+                                        onClick = {
+                                            val voicePathToPlay = photoEntity!!.userVoicePath!!
+                                            if (isPlayingVoice) {
+                                                voicePlayer.stopVoice()
+                                                isPlayingVoice = false
+                                                view.announceForAccessibility("재생을 중지했습니다")
+                                            } else {
+                                                val success = voicePlayer.playVoice(voicePathToPlay)
+                                                if (success) {
+                                                    isPlayingVoice = true
+                                                    view.announceForAccessibility("음성을 재생합니다")
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .padding(bottom = 8.dp)
+                                            .size(48.dp)
+                                            .semantics {
+                                                traversalIndex = 10f // 낮은 우선순위
+                                                contentDescription = if (isPlayingVoice) {
+                                                    "재생 중지. 지금 재생 중인 음성을 멈춥니다."
+                                                } else {
+                                                    "내 목소리 재생. 사진 촬영 시 녹음했던 음성을 재생합니다."
+                                                }
+                                            },
+                                        containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50).copy(alpha = 0.9f),
+                                        contentColor = Color.White
+                                    ) {
+                                        if (isPlayingVoice) {
+                                            // 빨간 배경 + 흰색 네모
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .background(Color.White)
+                                            )
+                                        } else {
+                                            // 초록 배경 + 흰색 재생 아이콘
+                                            Text(
+                                                text = "▶",
+                                                fontSize = 20.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                             
                             // 오른쪽 화살표 (다음 사진)
                             IconButton(
@@ -370,19 +426,74 @@ fun PhotoDetailScreen(
                             }
                         }
                     } else {
-                        // 촬영 후 진입: 화살표 없이 사진만
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = "저장된 사진이 표시됩니다",
+                        // 촬영 후 진입: 화살표 없이 사진만 (재생 버튼 오버레이)
+                        Box(
                             modifier = Modifier
                                 .padding(horizontal = 24.dp)
                                 .fillMaxWidth()
                                 .heightIn(max = 320.dp)
-                                .semantics { 
-                                    traversalIndex = 2f
-                                },
-                            contentScale = ContentScale.Fit
-                        )
+                        ) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = "저장된 사진이 표시됩니다",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .semantics { 
+                                        traversalIndex = 2f
+                                    },
+                                contentScale = ContentScale.Fit
+                            )
+                            
+                            // 음성 파일이 있을 때만 재생 버튼 표시 (중앙 하단 오버레이)
+                            if (!photoEntity?.userVoicePath.isNullOrBlank()) {
+                                FloatingActionButton(
+                                    onClick = {
+                                        val voicePathToPlay = photoEntity!!.userVoicePath!!
+                                        if (isPlayingVoice) {
+                                            voicePlayer.stopVoice()
+                                            isPlayingVoice = false
+                                            view.announceForAccessibility("재생을 중지했습니다")
+                                        } else {
+                                            val success = voicePlayer.playVoice(voicePathToPlay)
+                                            if (success) {
+                                                isPlayingVoice = true
+                                                view.announceForAccessibility("음성을 재생합니다")
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(bottom = 8.dp)
+                                        .size(48.dp)
+                                        .semantics {
+                                            traversalIndex = 10f // 낮은 우선순위
+                                            contentDescription = if (isPlayingVoice) {
+                                                "재생 중지. 지금 재생 중인 음성을 멈춥니다."
+                                            } else {
+                                                "내 목소리 재생. 사진 촬영 시 녹음했던 음성을 재생합니다."
+                                            }
+                                        },
+                                    containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50).copy(alpha = 0.9f),
+                                    contentColor = Color.White
+                                ) {
+                                    if (isPlayingVoice) {
+                                        // 빨간 배경 + 흰색 네모
+                                        Box(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .background(Color.White)
+                                        )
+                                    } else {
+                                        // 초록 배경 + 흰색 재생 아이콘
+                                        Text(
+                                            text = "▶",
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 
@@ -448,53 +559,7 @@ fun PhotoDetailScreen(
                                 .semantics { traversalIndex = 1f }, // 텍스트 다음에 읽힘
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            // 내 목소리 듣기 버튼 (조건부 렌더링)
-                            if (!photoEntity?.userVoicePath.isNullOrBlank()) {
-                                Button(
-                                    onClick = {
-                                        val voicePathToPlay = photoEntity!!.userVoicePath!!
-                                        if (isPlayingVoice) {
-                                            voicePlayer.stopVoice()
-                                            isPlayingVoice = false
-                                            view.announceForAccessibility("재생을 중지했습니다")
-                                        } else {
-                                            val success = voicePlayer.playVoice(voicePathToPlay)
-                                            if (success) {
-                                                isPlayingVoice = true
-                                                view.announceForAccessibility("음성을 재생합니다")
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(60.dp)
-                                        .semantics { 
-                                            contentDescription = if (isPlayingVoice) {
-                                                "재생 중지 버튼. 지금 재생 중인 음성을 멈춥니다."
-                                            } else {
-                                                "내 목소리 듣기 버튼. 사진을 찍을 때 녹음했던 음성을 재생합니다. 당시의 상황과 감정을 다시 들어볼 수 있습니다."
-                                            }
-                                        },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50),
-                                        contentColor = Color.White
-                                    ),
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-                                    elevation = ButtonDefaults.buttonElevation(
-                                        defaultElevation = 8.dp,
-                                        pressedElevation = 4.dp
-                                    )
-                                ) {
-                                    Text(
-                                        text = if (isPlayingVoice) "⏹️ 재생 중지" else "🎤 내 목소리 듣기",
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-                            
-                            // 갤러리로 버튼
+                            // 갤러리로 버튼 (재생 버튼은 사진 위 오버레이로 이동)
                             Button(
                                 onClick = {
                                     navController.navigate("gallery") {

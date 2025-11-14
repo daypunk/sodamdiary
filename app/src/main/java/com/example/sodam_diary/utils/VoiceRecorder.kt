@@ -14,6 +14,7 @@ import com.naver.speech.clientapi.SpeechRecognitionException
 import com.naver.speech.clientapi.SpeechRecognitionListener
 import com.naver.speech.clientapi.SpeechRecognitionResult
 import com.naver.speech.clientapi.SpeechRecognizer
+import java.io.File
 import java.lang.ref.WeakReference
 
 /**
@@ -58,10 +59,15 @@ class VoiceRecorder(private val context: Context) {
     private var latestPartialResult = ""
     private var isCleanupScheduled = false
     
+    // 오디오 녹음 (PCM → M4A)
+    private var audioWriter: AudioWriterPCM? = null
+    private var currentVoicePath: String? = null
+    
     /**
      * STT 시작 (Naver CLOVA 사용)
+     * @param enableRecording true: 음성 파일 저장, false: STT만 수행
      */
-    fun startRecording(): String? {
+    fun startRecording(enableRecording: Boolean = true): String? {
         try {
             Log.d(TAG, "🎤 Naver CLOVA STT 시작")
             
@@ -71,6 +77,21 @@ class VoiceRecorder(private val context: Context) {
             // 상태 초기화
             hasSpeechStarted = false
             latestPartialResult = ""
+            currentVoicePath = null
+            
+            // AudioWriter 초기화 (녹음 활성화 시에만)
+            if (enableRecording) {
+                audioWriter = AudioWriterPCM(context)
+                currentVoicePath = audioWriter?.open("voice")
+                
+                if (currentVoicePath == null) {
+                    Log.w(TAG, "⚠️ 오디오 파일 생성 실패 (STT는 계속 진행)")
+                } else {
+                    Log.d(TAG, "🎙️ 녹음 활성화 - 파일: $currentVoicePath")
+                }
+            } else {
+                Log.d(TAG, "🎤 STT만 사용 (녹음 비활성화)")
+            }
             
             // SpeechRecognizer 생성 (공식 문서 방식 - Client ID만 필요)
             try {
@@ -106,7 +127,8 @@ class VoiceRecorder(private val context: Context) {
             // 타이머 1: 5초 동안 발화 없으면 자동 취소
             startNoSpeechTimeout()
             
-            return null  // 파일 저장 안 함
+            // 음성 파일 경로 반환
+            return currentVoicePath
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ STT 시작 실패", e)
@@ -266,6 +288,22 @@ class VoiceRecorder(private val context: Context) {
                 silenceTimeoutRunnable = null
             }
             
+            // 오디오 파일 닫기 (STT와 독립적으로 처리)
+            try {
+                audioWriter?.close()
+                audioWriter = null
+                Log.d(TAG, "✅ 오디오 파일 저장 완료: $currentVoicePath")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 오디오 파일 저장 실패", e)
+                // 파일 저장 실패 시 파일 삭제
+                currentVoicePath?.let { path ->
+                    try {
+                        File(path).delete()
+                    } catch (_: Exception) {}
+                }
+                currentVoicePath = null
+            }
+            
             // release() 호출을 200ms 지연 (SDK 내부 gRPC 정리 완료 대기)
             speechRecognizer?.let { recognizer ->
                 timerHandler.postDelayed({
@@ -297,6 +335,13 @@ class VoiceRecorder(private val context: Context) {
         this.onTranscriptionResult = onTranscription
         this.onError = onError
         this.onReadyForSpeech = onReady
+    }
+    
+    /**
+     * 현재 녹음 중인 음성 파일 경로 반환
+     */
+    fun getCurrentVoicePath(): String? {
+        return currentVoicePath
     }
     
     /**
@@ -395,6 +440,14 @@ class VoiceRecorder(private val context: Context) {
         @WorkerThread
         override fun onRecord(speech: ShortArray?) {
             // 음성 데이터 수신 (배경 소음에도 계속 호출되므로 타이머 처리 안 함)
+            // PCM 데이터를 M4A 파일로 저장
+            speech?.let { pcmData ->
+                try {
+                    audioWriter?.write(pcmData)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ 오디오 데이터 저장 실패", e)
+                }
+            }
         }
         
         @WorkerThread
