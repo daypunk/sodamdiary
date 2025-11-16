@@ -344,11 +344,11 @@ fun PhotoDetailScreen(
                                     contentDescription = "저장된 사진이 표시됩니다",
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .semantics { 
-                                            traversalIndex = 2f
-                                        },
-                                    contentScale = ContentScale.Fit
-                                )
+                                    .semantics { 
+                                        traversalIndex = 2f
+                                    },
+                                contentScale = ContentScale.Fit
+                            )
                                 
                                 // 음성 파일이 있을 때만 재생 버튼 표시 (중앙 하단 오버레이)
                                 if (!photoEntity?.userVoicePath.isNullOrBlank()) {
@@ -374,11 +374,7 @@ fun PhotoDetailScreen(
                                             .size(48.dp)
                                             .semantics {
                                                 traversalIndex = 10f // 낮은 우선순위
-                                                contentDescription = if (isPlayingVoice) {
-                                                    "재생 중지. 지금 재생 중인 음성을 멈춥니다."
-                                                } else {
-                                                    "내 목소리 재생. 사진 촬영 시 녹음했던 음성을 재생합니다."
-                                                }
+                                                contentDescription = "내 목소리 듣기. 탭하면 재생하거나 중지합니다."
                                             },
                                         containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50).copy(alpha = 0.9f),
                                         contentColor = Color.White
@@ -447,11 +443,11 @@ fun PhotoDetailScreen(
                                 contentDescription = "저장된 사진이 표시됩니다",
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .semantics { 
-                                        traversalIndex = 2f
-                                    },
-                                contentScale = ContentScale.Fit
-                            )
+                                .semantics { 
+                                    traversalIndex = 2f
+                                },
+                            contentScale = ContentScale.Fit
+                        )
                             
                             // 음성 파일이 있을 때만 재생 버튼 표시 (중앙 하단 오버레이)
                             if (!photoEntity?.userVoicePath.isNullOrBlank()) {
@@ -477,11 +473,7 @@ fun PhotoDetailScreen(
                                         .size(48.dp)
                                         .semantics {
                                             traversalIndex = 10f // 낮은 우선순위
-                                            contentDescription = if (isPlayingVoice) {
-                                                "재생 중지. 지금 재생 중인 음성을 멈춥니다."
-                                            } else {
-                                                "내 목소리 재생. 사진 촬영 시 녹음했던 음성을 재생합니다."
-                                            }
+                                            contentDescription = "내 목소리 듣기. 탭하면 재생하거나 중지합니다."
                                         },
                                     containerColor = if (isPlayingVoice) Color.Red else Color(0xFF4CAF50).copy(alpha = 0.9f),
                                     contentColor = Color.White
