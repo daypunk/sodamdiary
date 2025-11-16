@@ -98,6 +98,14 @@ fun PhotoDetailScreen(
         }
     }
     
+    // 사진 변경 시 음성 재생 중지 (화살표 네비게이션 대응)
+    LaunchedEffect(decodedPath) {
+        if (isPlayingVoice) {
+            voicePlayer.stopVoice()
+            isPlayingVoice = false
+        }
+    }
+    
     // 이미지 로드
     val bitmap = remember(decodedPath) {
         photoManager.loadRotatedBitmap(imageFile)
@@ -355,7 +363,8 @@ fun PhotoDetailScreen(
                                                 val success = voicePlayer.playVoice(voicePathToPlay)
                                                 if (success) {
                                                     isPlayingVoice = true
-                                                    view.announceForAccessibility("음성을 재생합니다")
+                                                    // TalkBack과 음성 파일 겹침 방지: 안내 제거 + 포커스 해제
+                                                    view.clearFocus()
                                                 }
                                             }
                                         },
@@ -457,7 +466,8 @@ fun PhotoDetailScreen(
                                             val success = voicePlayer.playVoice(voicePathToPlay)
                                             if (success) {
                                                 isPlayingVoice = true
-                                                view.announceForAccessibility("음성을 재생합니다")
+                                                // TalkBack과 음성 파일 겹침 방지: 안내 제거 + 포커스 해제
+                                                view.clearFocus()
                                             }
                                         }
                                     },
