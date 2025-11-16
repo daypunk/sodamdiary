@@ -59,8 +59,8 @@ class VoiceRecorder(private val context: Context) {
     private var latestPartialResult = ""
     private var isCleanupScheduled = false
     
-    // 오디오 녹음 (PCM → M4A)
-    private var audioWriter: AudioWriterPCM? = null
+    // 오디오 녹음 (PCM → WAV)
+    private var audioWriter: AudioWriterWAV? = null
     private var currentVoicePath: String? = null
     
     /**
@@ -81,7 +81,7 @@ class VoiceRecorder(private val context: Context) {
             
             // AudioWriter 초기화 (녹음 활성화 시에만)
             if (enableRecording) {
-                audioWriter = AudioWriterPCM(context)
+                audioWriter = AudioWriterWAV(context)
                 currentVoicePath = audioWriter?.open("voice")
                 
                 if (currentVoicePath == null) {

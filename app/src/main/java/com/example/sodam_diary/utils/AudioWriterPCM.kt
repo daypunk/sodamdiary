@@ -1,6 +1,7 @@
 package com.example.sodam_diary.utils
 
 import android.content.Context
+import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
@@ -8,6 +9,7 @@ import android.media.MediaMuxer
 import android.util.Log
 import java.io.File
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * PCM 오디오 데이터를 M4A 파일로 인코딩하는 유틸리티
@@ -21,6 +23,7 @@ class AudioWriterPCM(private val context: Context) {
         private const val CHANNEL_COUNT = 1 // 모노
         private const val BIT_RATE = 64000 // 64kbps
         private const val CODEC_TIMEOUT_US = 10000L
+        private const val GAIN_MULTIPLIER = 20.0f // PCM amplitude 증폭 배율 (1048 → 20960)
     }
     
     private var mediaCodec: MediaCodec? = null
@@ -54,6 +57,7 @@ class AudioWriterPCM(private val context: Context) {
                 setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
                 setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
                 setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
+                setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
             }
             
             // MediaCodec 초기화
@@ -89,9 +93,33 @@ class AudioWriterPCM(private val context: Context) {
         if (mediaCodec == null || pcmData.isEmpty()) return
         
         try {
-            // Short 배열을 ByteBuffer로 변환
-            val byteBuffer = ByteBuffer.allocate(pcmData.size * 2)
-            pcmData.forEach { sample ->
+            // PCM amplitude 분석 (첫 10개 write에서만)
+            val originalMaxAmplitude = if (totalSamplesWritten < 10) {
+                pcmData.maxOfOrNull { kotlin.math.abs(it.toInt()) } ?: 0
+            } else 0
+            
+            // PCM 데이터 증폭 (Gain 적용)
+            val amplifiedData = ShortArray(pcmData.size) { i ->
+                val amplified = (pcmData[i] * GAIN_MULTIPLIER).toInt()
+                // 클리핑 처리 (Short 범위: -32768 ~ 32767)
+                when {
+                    amplified > Short.MAX_VALUE -> Short.MAX_VALUE
+                    amplified < Short.MIN_VALUE -> Short.MIN_VALUE
+                    else -> amplified.toShort()
+                }
+            }
+            
+            // 증폭 결과 로그 (첫 10개 write에서만)
+            if (totalSamplesWritten < 10) {
+                val amplifiedMaxAmplitude = amplifiedData.maxOfOrNull { kotlin.math.abs(it.toInt()) } ?: 0
+                Log.d(TAG, "🔊 PCM amplitude - 원본: $originalMaxAmplitude → 증폭: $amplifiedMaxAmplitude (목표: 20000~32767)")
+            }
+            
+            // Short 배열을 ByteBuffer로 변환 (Little Endian 명시!)
+            val byteBuffer = ByteBuffer.allocate(amplifiedData.size * 2)
+                .order(ByteOrder.LITTLE_ENDIAN)
+            
+            amplifiedData.forEach { sample ->
                 byteBuffer.putShort(sample)
             }
             byteBuffer.flip()
