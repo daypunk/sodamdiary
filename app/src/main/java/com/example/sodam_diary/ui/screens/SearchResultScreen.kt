@@ -52,6 +52,33 @@ fun SearchResultScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
+    // 검색 조건 텍스트 생성
+    val searchQueryText = remember(selectedYear, selectedMonth, selectedLocation, selectedContent) {
+        buildString {
+            val conditions = mutableListOf<String>()
+            
+            if (!selectedYear.isNullOrBlank() && selectedYear != "null" && selectedYear != "-") {
+                conditions.add("${selectedYear}년")
+            }
+            if (!selectedMonth.isNullOrBlank() && selectedMonth != "null" && selectedMonth != "-") {
+                conditions.add("${selectedMonth}월")
+            }
+            if (!selectedLocation.isNullOrBlank() && selectedLocation != "null" && selectedLocation != "-") {
+                conditions.add(selectedLocation)
+            }
+            if (!selectedContent.isNullOrBlank() && selectedContent != "null" && selectedContent != "-") {
+                val decodedContent = Uri.decode(selectedContent)
+                conditions.add("'$decodedContent'")
+            }
+            
+            if (conditions.isEmpty()) {
+                "전체 사진"
+            } else {
+                conditions.joinToString(", ")
+            }
+        }
+    }
+    
     // 검색 실행
     LaunchedEffect(selectedYear, selectedMonth, selectedLocation, selectedContent) {
         coroutineScope.launch {
@@ -100,15 +127,33 @@ fun SearchResultScreen(
     }
     
     // 시각장애인용 고대비 디자인 + status bar 대응 + 헤더 뒤로가기 버튼
-    val resultCountFocus = remember { FocusRequester() }
+    val searchQueryFocus = remember { FocusRequester() }
     
     ScreenLayout(
         showBackButton = true,
         onBackClick = { navController.popBackStack() },
-        initialFocusRequester = resultCountFocus,
+        initialFocusRequester = searchQueryFocus,
         contentFocusLabel = "검색 결과"
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // 검색 조건 표시 (TalkBack 최우선)
+            Text(
+                text = "'$searchQueryText'로 검색한 결과",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
+                    .focusRequester(searchQueryFocus)
+                    .focusable()
+                    .semantics { 
+                        traversalIndex = -1f  // 가장 먼저 읽힘
+                        contentDescription = "$searchQueryText 로 검색한 결과입니다"
+                    }
+            )
+            
             // 컨텐츠 영역
             Box(modifier = Modifier.weight(1f).semantics { traversalIndex = 0f }) {
                 when {
@@ -173,7 +218,6 @@ fun SearchResultScreen(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .padding(bottom = 16.dp)
-                                    .focusRequester(resultCountFocus)
                                     .focusable()
                                     .semantics { 
                                         contentDescription = "검색 결과 0개. 해당하는 사진이 없어요"
@@ -208,7 +252,6 @@ fun SearchResultScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 16.dp)
-                                        .focusRequester(resultCountFocus)
                                         .focusable()
                                         .semantics { contentDescription = "검색 결과 ${searchResults.size}개" }
                                 )

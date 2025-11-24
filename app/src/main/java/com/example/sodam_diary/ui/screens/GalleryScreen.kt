@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.scale
 import androidx.navigation.NavController
 import com.example.sodam_diary.data.entity.PhotoEntity
 import com.example.sodam_diary.data.repository.PhotoRepository
@@ -69,15 +71,13 @@ fun GalleryScreen(navController: NavController) {
     
     // 검색 관련 상태
     var showSearchDialog by remember { mutableStateOf(false) }
-    var isRecording by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var lastSearchQuery by remember { mutableStateOf("") } // 마지막 검색어 저장 (표시용)
     var isSearching by remember { mutableStateOf(false) }
     var isSearchRecording by remember { mutableStateOf(false) }
-    var currentSearchVoicePath by remember { mutableStateOf<String?>(null) }
     var isSearchMode by remember { mutableStateOf(false) } // 검색 결과 표시 중인지 여부
     
-    // VoiceRecorder
-    val voiceRecorder = remember { VoiceRecorder(context) }
+    // VoiceRecorder (검색용)
     val searchVoiceRecorder = remember { VoiceRecorder(context) }
     
     // 마이크 권한 체크
@@ -247,25 +247,19 @@ fun GalleryScreen(navController: NavController) {
                             if (isSearchMode) {
                                 // 검색 결과 없음
                                 Text(
-                                    text = "검색 결과 0개",
+                                    text = "'$lastSearchQuery'에 해당하는\n사진이 없어요",
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Center,
+                                    lineHeight = 32.sp,
                                     modifier = Modifier
                                         .padding(bottom = 16.dp)
                                         .focusRequester(firstMonthTitleFocus)
                                         .focusable()
                                         .semantics { 
-                                            contentDescription = "검색 결과 0개. 해당하는 사진이 없어요"
+                                            contentDescription = "$lastSearchQuery 에 해당하는 사진이 없어요"
                                         }
-                                )
-                                Text(
-                                    text = "해당하는 사진이 없어요",
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    textAlign = TextAlign.Center
                                 )
                             } else {
                                 // 빈 갤러리
@@ -303,6 +297,26 @@ fun GalleryScreen(navController: NavController) {
                                 .semantics(mergeDescendants = false) { },
                             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp) // 상단 여백 축소, 하단 버튼 공간 확보
                         ) {
+                            // 검색 모드일 때 검색어 표시
+                            if (isSearchMode) {
+                                item {
+                                    Text(
+                                        text = "'$lastSearchQuery'로 검색한 결과",
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 8.dp, vertical = 16.dp)
+                                            .focusRequester(firstMonthTitleFocus)
+                                            .focusable()
+                                            .semantics { 
+                                                contentDescription = "$lastSearchQuery 로 검색한 결과입니다"
+                                            }
+                                    )
+                                }
+                            }
+                            
                             items(groupedPhotos) { (monthYear, monthPhotos) ->
                                 // 월별 타이틀
                                 Text(
@@ -314,7 +328,8 @@ fun GalleryScreen(navController: NavController) {
                                         .fillMaxWidth()
                                         .padding(vertical = 16.dp)
                                         .then(
-                                            if (groupedPhotos.firstOrNull()?.first == monthYear)
+                                            // 검색 모드가 아니고 첫 번째 월인 경우에만 포커스
+                                            if (!isSearchMode && groupedPhotos.firstOrNull()?.first == monthYear)
                                                 Modifier.focusRequester(firstMonthTitleFocus).focusable()
                                             else Modifier
                                         )
@@ -403,6 +418,7 @@ fun GalleryScreen(navController: NavController) {
                                     selectedIds = emptySet()
                                     selectionMode = false
                                     isSearchMode = false // 검색 모드도 해제
+                                    lastSearchQuery = "" // 검색어 초기화
                                 }
                             }
                         },
@@ -434,6 +450,7 @@ fun GalleryScreen(navController: NavController) {
                         onClick = { 
                             photos = allPhotos // 전체 사진 복원
                             isSearchMode = false
+                            lastSearchQuery = "" // 검색어 초기화
                             view.announceForAccessibility("전체 갤러리로 돌아갑니다")
                         },
                         modifier = Modifier
@@ -462,9 +479,13 @@ fun GalleryScreen(navController: NavController) {
                     Button(
                         onClick = { 
                             if (micPermissionGranted.value) {
-                                // 즉시 STT 시작 (녹음 비활성화 - 검색은 음성 파일 불필요)
+                                // 즉시 STT 시작 (녹음 비활성화 - 검색은 음성 파일 불필요, 타임아웃 3초)
                                 searchQuery = ""
-                                searchVoiceRecorder.startRecording(enableRecording = false)
+                                searchVoiceRecorder.startRecording(
+                                    enableRecording = false,
+                                    noSpeechTimeoutMs = 6000L,
+                                    silenceTimeoutMs = 3000L
+                                )
                                 isSearchRecording = true
                                 showSearchDialog = true
                             } else {
@@ -506,6 +527,7 @@ fun GalleryScreen(navController: NavController) {
                 try {
                     val results = photoRepository.searchPhotosByVoice(searchQuery)
                     photos = results
+                    lastSearchQuery = searchQuery // 검색어 저장 (표시용)
                     isSearchMode = true // 검색 모드 활성화 (결과 없어도 유지)
                 } catch (e: Exception) {
                     view.announceForAccessibility("검색에 실패했습니다")
@@ -640,7 +662,17 @@ private fun SimpleRecordingDialog(
     onStop: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val view = LocalView.current
+    // 펄스 애니메이션
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
     
     Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
         Box(
@@ -655,6 +687,7 @@ private fun SimpleRecordingDialog(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .height(80.dp)
+                    .scale(scale) // 펄스 효과
                     .semantics {
                         contentDescription = "녹음 중지하기, 말씀이 끝나면 눌러주세요"
                     },

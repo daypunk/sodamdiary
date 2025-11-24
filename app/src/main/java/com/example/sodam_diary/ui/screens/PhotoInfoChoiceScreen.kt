@@ -35,6 +35,8 @@ import java.io.File
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.focusable
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.scale
 
 @Composable
 fun PhotoInfoChoiceScreen(
@@ -420,6 +422,18 @@ private fun SimpleRecordingDialog(
     onStop: () -> Unit,
     onCancel: () -> Unit
 ) {
+    // 펄스 애니메이션
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+    
     Dialog(onDismissRequest = { if (!isRecording) onCancel() }) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -433,6 +447,7 @@ private fun SimpleRecordingDialog(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
                     .height(80.dp)
+                    .scale(scale) // 펄스 효과
                     .semantics {
                         contentDescription = "녹음 중지 버튼. 말씀이 끝나면 이 버튼을 눌러주세요. 지금까지 말씀하신 내용이 자동으로 글자로 변환됩니다."
                     },

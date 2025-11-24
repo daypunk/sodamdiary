@@ -37,9 +37,9 @@ class VoiceRecorder(private val context: Context) {
         private const val MSG_RECOGNITION_ERROR = 4
         private const val MSG_CLIENT_INACTIVE = 5
         
-        // 타이머 설정
-        private const val NO_SPEECH_TIMEOUT = 5000L  // 5초: 발화 없이 대기 시간
-        private const val SILENCE_TIMEOUT = 5000L    // 5초: 발화 후 침묵 감지 시간
+        // 타이머 설정 (기본값)
+        private const val DEFAULT_NO_SPEECH_TIMEOUT = 6000L  // 5초: 발화 없이 대기 시간
+        private const val DEFAULT_SILENCE_TIMEOUT = 6000L    // 5초: 발화 후 침묵 감지 시간
     }
     
     private var speechRecognizer: SpeechRecognizer? = null
@@ -59,6 +59,10 @@ class VoiceRecorder(private val context: Context) {
     private var latestPartialResult = ""
     private var isCleanupScheduled = false
     
+    // 타이머 설정 (동적으로 변경 가능)
+    private var currentNoSpeechTimeout = DEFAULT_NO_SPEECH_TIMEOUT
+    private var currentSilenceTimeout = DEFAULT_SILENCE_TIMEOUT
+    
     // 오디오 녹음 (PCM → WAV)
     private var audioWriter: AudioWriterWAV? = null
     private var currentVoicePath: String? = null
@@ -66,8 +70,14 @@ class VoiceRecorder(private val context: Context) {
     /**
      * STT 시작 (Naver CLOVA 사용)
      * @param enableRecording true: 음성 파일 저장, false: STT만 수행
+     * @param noSpeechTimeoutMs 발화 없이 대기하는 시간 (밀리초, 기본 5초)
+     * @param silenceTimeoutMs 발화 후 침묵 감지 시간 (밀리초, 기본 5초)
      */
-    fun startRecording(enableRecording: Boolean = true): String? {
+    fun startRecording(
+        enableRecording: Boolean = true, 
+        noSpeechTimeoutMs: Long = DEFAULT_NO_SPEECH_TIMEOUT,
+        silenceTimeoutMs: Long = DEFAULT_SILENCE_TIMEOUT
+    ): String? {
         try {
             Log.d(TAG, "🎤 Naver CLOVA STT 시작")
             
@@ -78,6 +88,10 @@ class VoiceRecorder(private val context: Context) {
             hasSpeechStarted = false
             latestPartialResult = ""
             currentVoicePath = null
+            
+            // 타임아웃 설정 저장
+            currentNoSpeechTimeout = noSpeechTimeoutMs
+            currentSilenceTimeout = silenceTimeoutMs
             
             // AudioWriter 초기화 (녹음 활성화 시에만)
             if (enableRecording) {
@@ -185,35 +199,35 @@ class VoiceRecorder(private val context: Context) {
     }
     
     /**
-     * 타이머 1: 발화 시작 없이 5초 경과 시 자동 종료 (stop 사용)
+     * 타이머 1: 발화 시작 없이 설정된 시간 경과 시 자동 종료 (stop 사용)
      */
     private fun startNoSpeechTimeout() {
         noSpeechTimeoutRunnable?.let { timerHandler.removeCallbacks(it) }
         
         noSpeechTimeoutRunnable = Runnable {
-            Log.w(TAG, "⏰ 발화 없이 5초 경과 - 자동 종료")
+            Log.w(TAG, "⏰ 발화 없이 ${currentNoSpeechTimeout}ms 경과 - 자동 종료")
             onError?.invoke("음성이 감지되지 않았습니다")
             // cancel() 대신 stop() 사용 (정상 종료 프로세스)
             stopRecording()
         }
         
-        timerHandler.postDelayed(noSpeechTimeoutRunnable!!, NO_SPEECH_TIMEOUT)
-        Log.d(TAG, "⏱️ 발화 대기 타이머 시작 (5초)")
+        timerHandler.postDelayed(noSpeechTimeoutRunnable!!, currentNoSpeechTimeout)
+        Log.d(TAG, "⏱️ 발화 대기 타이머 시작 (${currentNoSpeechTimeout}ms)")
     }
     
     /**
-     * 타이머 2: 발화 후 5초 침묵 시 자동 종료
+     * 타이머 2: 발화 후 설정된 시간 침묵 시 자동 종료
      */
     private fun startSilenceTimeout() {
         // 기존 침묵 타이머 취소
         silenceTimeoutRunnable?.let { timerHandler.removeCallbacks(it) }
         
         silenceTimeoutRunnable = Runnable {
-            Log.d(TAG, "⏰ 5초 침묵 감지 - 자동 종료")
+            Log.d(TAG, "⏰ ${currentSilenceTimeout}ms 침묵 감지 - 자동 종료")
             stopRecording()
         }
         
-        timerHandler.postDelayed(silenceTimeoutRunnable!!, SILENCE_TIMEOUT)
+        timerHandler.postDelayed(silenceTimeoutRunnable!!, currentSilenceTimeout)
     }
     
     /**
