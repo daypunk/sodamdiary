@@ -79,7 +79,7 @@ class VoiceRecorder(private val context: Context) {
         silenceTimeoutMs: Long = DEFAULT_SILENCE_TIMEOUT
     ): String? {
         try {
-            Log.d(TAG, "🎤 Naver CLOVA STT 시작")
+            Log.d(TAG, "Naver CLOVA STT 시작")
             
             // 기존 인식기 정리
             cleanup()
@@ -99,12 +99,12 @@ class VoiceRecorder(private val context: Context) {
                 currentVoicePath = audioWriter?.open("voice")
                 
                 if (currentVoicePath == null) {
-                    Log.w(TAG, "⚠️ 오디오 파일 생성 실패 (STT는 계속 진행)")
+                    Log.w(TAG, "오디오 파일 생성 실패 (STT는 계속 진행)")
                 } else {
-                    Log.d(TAG, "🎙️ 녹음 활성화 - 파일: $currentVoicePath")
+                    Log.d(TAG, "녹음 활성화: $currentVoicePath")
                 }
             } else {
-                Log.d(TAG, "🎤 STT만 사용 (녹음 비활성화)")
+                Log.d(TAG, "STT만 사용 (녹음 비활성화)")
             }
             
             // SpeechRecognizer 생성 (공식 문서 방식 - Client ID만 필요)
@@ -112,7 +112,7 @@ class VoiceRecorder(private val context: Context) {
                 speechRecognizer = SpeechRecognizer(context, BuildConfig.NAVER_CLOVA_CLIENT_ID)
                 speechRecognizer?.setSpeechRecognitionListener(NaverRecognitionListener(handler))
             } catch (e: SpeechRecognitionException) {
-                Log.e(TAG, "❌ SpeechRecognizer 생성 실패", e)
+                Log.e(TAG, "SpeechRecognizer 생성 실패", e)
                 onError?.invoke("음성 인식기를 초기화할 수 없습니다: ${e.message}")
                 return null
             }
@@ -121,7 +121,7 @@ class VoiceRecorder(private val context: Context) {
             try {
                 speechRecognizer?.initialize()
             } catch (e: Exception) {
-                Log.e(TAG, "❌ SpeechRecognizer 초기화 실패", e)
+                Log.e(TAG, "SpeechRecognizer 초기화 실패", e)
                 onError?.invoke("음성 인식 서버에 연결할 수 없습니다: ${e.message}")
                 cleanup()
                 return null
@@ -132,7 +132,7 @@ class VoiceRecorder(private val context: Context) {
                 val config = SpeechConfig(LanguageType.KOREAN, EndPointDetectType.MANUAL)
                 speechRecognizer?.recognize(config)
             } catch (e: SpeechRecognitionException) {
-                Log.e(TAG, "❌ 음성 인식 시작 실패", e)
+                Log.e(TAG, "음성 인식 시작 실패", e)
                 onError?.invoke("음성 인식을 시작할 수 없습니다: ${e.message}")
                 cleanup()
                 return null
@@ -145,7 +145,7 @@ class VoiceRecorder(private val context: Context) {
             return currentVoicePath
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ STT 시작 실패", e)
+            Log.e(TAG, "STT 시작 실패", e)
             onError?.invoke("음성 인식을 시작할 수 없습니다: ${e.message}")
             cleanup()
             return null
@@ -157,7 +157,7 @@ class VoiceRecorder(private val context: Context) {
      */
     fun stopRecording() {
         try {
-            Log.d(TAG, "🎤 STT 수동 중지 - 결과 처리")
+            Log.d(TAG, "STT 수동 중지")
             
             // 모든 타이머 취소
             cancelAllTimers()
@@ -167,7 +167,7 @@ class VoiceRecorder(private val context: Context) {
             speechRecognizer?.stop()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ STT 중지 실패", e)
+            Log.e(TAG, "STT 중지 실패", e)
             // 예외 발생 시에도 지연 cleanup
             onError?.invoke("음성 인식 중지에 실패했습니다")
             scheduleCleanup(100)
@@ -180,7 +180,7 @@ class VoiceRecorder(private val context: Context) {
      */
     fun cancelRecording() {
         try {
-            Log.d(TAG, "🎤 STT 취소 (사용자 요청)")
+            Log.d(TAG, "STT 취소")
             
             // 모든 타이머 취소
             cancelAllTimers()
@@ -192,7 +192,7 @@ class VoiceRecorder(private val context: Context) {
             // onResult/onError 콜백에서 scheduleCleanup() 호출될 것임
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ STT 취소 실패", e)
+            Log.e(TAG, "STT 취소 실패", e)
             // 예외 발생 시에도 지연 cleanup
             scheduleCleanup(100)
         }
@@ -205,14 +205,14 @@ class VoiceRecorder(private val context: Context) {
         noSpeechTimeoutRunnable?.let { timerHandler.removeCallbacks(it) }
         
         noSpeechTimeoutRunnable = Runnable {
-            Log.w(TAG, "⏰ 발화 없이 ${currentNoSpeechTimeout}ms 경과 - 자동 종료")
+            Log.w(TAG, "발화 없이 ${currentNoSpeechTimeout}ms 경과, 자동 종료")
             onError?.invoke("음성이 감지되지 않았습니다")
             // cancel() 대신 stop() 사용 (정상 종료 프로세스)
             stopRecording()
         }
         
         timerHandler.postDelayed(noSpeechTimeoutRunnable!!, currentNoSpeechTimeout)
-        Log.d(TAG, "⏱️ 발화 대기 타이머 시작 (${currentNoSpeechTimeout}ms)")
+        Log.d(TAG, "발화 대기 타이머 시작 (${currentNoSpeechTimeout}ms)")
     }
     
     /**
@@ -223,7 +223,7 @@ class VoiceRecorder(private val context: Context) {
         silenceTimeoutRunnable?.let { timerHandler.removeCallbacks(it) }
         
         silenceTimeoutRunnable = Runnable {
-            Log.d(TAG, "⏰ ${currentSilenceTimeout}ms 침묵 감지 - 자동 종료")
+            Log.d(TAG, "${currentSilenceTimeout}ms 침묵 감지, 자동 종료")
             stopRecording()
         }
         
@@ -262,12 +262,12 @@ class VoiceRecorder(private val context: Context) {
             noSpeechTimeoutRunnable?.let { timerHandler.removeCallbacks(it) }
             noSpeechTimeoutRunnable = null
             
-            Log.d(TAG, "🗣️ 첫 발화 감지 - 침묵 타이머 시작")
+            Log.d(TAG, "첫 발화 감지, 침묵 타이머 시작")
         }
         
         // 타이머 2 재시작 (부분 결과 업데이트됨 = 아직 말하는 중)
         startSilenceTimeout()
-        Log.d(TAG, "⏱️ 침묵 타이머 재시작 (부분 결과 수신)")
+        Log.d(TAG, "침묵 타이머 재시작")
     }
     
     /**
@@ -275,7 +275,7 @@ class VoiceRecorder(private val context: Context) {
      */
     private fun scheduleCleanup(delayMs: Long) {
         if (isCleanupScheduled) {
-            Log.d(TAG, "⚠️ cleanup이 이미 예약되어 있음")
+            Log.d(TAG, "cleanup 이미 예약됨")
             return
         }
         
@@ -306,9 +306,9 @@ class VoiceRecorder(private val context: Context) {
             try {
                 audioWriter?.close()
                 audioWriter = null
-                Log.d(TAG, "✅ 오디오 파일 저장 완료: $currentVoicePath")
+                Log.d(TAG, "오디오 파일 저장 완료: $currentVoicePath")
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 오디오 파일 저장 실패", e)
+                Log.e(TAG, "오디오 파일 저장 실패", e)
                 // 파일 저장 실패 시 파일 삭제
                 currentVoicePath?.let { path ->
                     try {
@@ -323,9 +323,9 @@ class VoiceRecorder(private val context: Context) {
                 timerHandler.postDelayed({
                     try {
                         recognizer.release()
-                        Log.d(TAG, "✅ SpeechRecognizer 리소스 해제 완료")
+                        Log.d(TAG, "SpeechRecognizer 리소스 해제 완료")
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ SpeechRecognizer 해제 중 오류 (무시)", e)
+                        Log.e(TAG, "SpeechRecognizer 해제 오류", e)
                     }
                 }, 200)
             }
@@ -333,7 +333,7 @@ class VoiceRecorder(private val context: Context) {
             isCleanupScheduled = false
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 정리 실패", e)
+            Log.e(TAG, "정리 실패", e)
             isCleanupScheduled = false
         }
     }
@@ -364,7 +364,7 @@ class VoiceRecorder(private val context: Context) {
     private fun handleMessage(msg: Message) {
         when (msg.what) {
             MSG_CLIENT_READY -> {
-                Log.d(TAG, "✅ STT 준비 완료")
+                Log.d(TAG, "STT 준비 완료")
                 onReadyForSpeech?.invoke()
             }
             
@@ -372,7 +372,7 @@ class VoiceRecorder(private val context: Context) {
                 val result = msg.obj as? String ?: ""
                 if (result.isNotBlank()) {
                     latestPartialResult = result
-                    Log.d(TAG, "📝 부분 결과: $result")
+                    Log.d(TAG, "부분 결과: $result")
                 }
             }
             
@@ -384,10 +384,10 @@ class VoiceRecorder(private val context: Context) {
                 val transcription = results?.firstOrNull() ?: latestPartialResult
                 
                 if (transcription.isNotBlank()) {
-                    Log.d(TAG, "✅ 최종 결과: $transcription")
+                    Log.d(TAG, "최종 결과: $transcription")
                     onTranscriptionResult?.invoke(transcription)
                 } else {
-                    Log.w(TAG, "⚠️ STT 결과 없음")
+                    Log.w(TAG, "STT 결과 없음")
                     onError?.invoke("음성을 인식할 수 없습니다")
                 }
                 
@@ -400,7 +400,7 @@ class VoiceRecorder(private val context: Context) {
                 
                 val errorCode = msg.obj as? Int ?: -1
                 val errorMessage = getErrorMessage(errorCode)
-                Log.e(TAG, "❌ STT 오류: $errorMessage (code: $errorCode)")
+                Log.e(TAG, "STT 오류: $errorMessage (code: $errorCode)")
                 
                 onError?.invoke(errorMessage)
                 
@@ -409,7 +409,7 @@ class VoiceRecorder(private val context: Context) {
             }
             
             MSG_CLIENT_INACTIVE -> {
-                Log.d(TAG, "🔇 STT 비활성화")
+                Log.d(TAG, "STT 비활성화")
                 cancelAllTimers()
                 
                 // 지연 cleanup (gRPC 정리 대기)
@@ -459,7 +459,7 @@ class VoiceRecorder(private val context: Context) {
                 try {
                     audioWriter?.write(pcmData)
                 } catch (e: Exception) {
-                    Log.e(TAG, "❌ 오디오 데이터 저장 실패", e)
+                    Log.e(TAG, "오디오 데이터 저장 실패", e)
                 }
             }
         }
@@ -475,7 +475,7 @@ class VoiceRecorder(private val context: Context) {
         
         @WorkerThread
         override fun onEndPointDetected() {
-            Log.d(TAG, "🎯 끝점 감지 (EndPoint Detected)")
+            Log.d(TAG, "EndPoint Detected")
         }
         
         @WorkerThread
@@ -495,7 +495,7 @@ class VoiceRecorder(private val context: Context) {
         
         @WorkerThread
         override fun onEndPointDetectTypeSelected(epdType: EndPointDetectType?) {
-            Log.d(TAG, "🔧 EndPoint 감지 타입: $epdType")
+            Log.d(TAG, "EndPoint 감지 타입: $epdType")
         }
     }
 }

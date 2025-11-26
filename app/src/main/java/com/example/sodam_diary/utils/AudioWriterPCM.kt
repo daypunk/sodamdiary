@@ -76,11 +76,11 @@ class AudioWriterPCM(private val context: Context) {
             muxerStarted = false
             totalSamplesWritten = 0L
             
-            Log.d(TAG, "✅ 오디오 녹음 시작: ${outputFile!!.absolutePath}")
+            Log.d(TAG, "오디오 녹음 시작: ${outputFile!!.absolutePath}")
             return outputFile!!.absolutePath
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 오디오 파일 열기 실패", e)
+            Log.e(TAG, "오디오 파일 열기 실패", e)
             close()
             return null
         }
@@ -112,7 +112,7 @@ class AudioWriterPCM(private val context: Context) {
             // 증폭 결과 로그 (첫 10개 write에서만)
             if (totalSamplesWritten < 10) {
                 val amplifiedMaxAmplitude = amplifiedData.maxOfOrNull { kotlin.math.abs(it.toInt()) } ?: 0
-                Log.d(TAG, "🔊 PCM amplitude - 원본: $originalMaxAmplitude → 증폭: $amplifiedMaxAmplitude (목표: 20000~32767)")
+                Log.d(TAG, "PCM amplitude - 원본: $originalMaxAmplitude, 증폭: $amplifiedMaxAmplitude")
             }
             
             // Short 배열을 ByteBuffer로 변환 (Little Endian 명시!)
@@ -147,7 +147,7 @@ class AudioWriterPCM(private val context: Context) {
             drainEncoder(false)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ PCM 데이터 쓰기 실패", e)
+            Log.e(TAG, "PCM 데이터 쓰기 실패", e)
         }
     }
     
@@ -186,10 +186,10 @@ class AudioWriterPCM(private val context: Context) {
             muxerStarted = false
             audioTrackIndex = -1
             
-            Log.d(TAG, "✅ 오디오 파일 저장 완료: ${outputFile?.absolutePath}")
+            Log.d(TAG, "오디오 파일 저장 완료: ${outputFile?.absolutePath}")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 오디오 파일 닫기 실패", e)
+            Log.e(TAG, "오디오 파일 닫기 실패", e)
         }
     }
     
@@ -215,7 +215,7 @@ class AudioWriterPCM(private val context: Context) {
                     audioTrackIndex = mediaMuxer!!.addTrack(newFormat)
                     mediaMuxer!!.start()
                     muxerStarted = true
-                    Log.d(TAG, "🎬 Muxer 시작")
+                    Log.d(TAG, "Muxer 시작")
                 }
                 outputBufferIndex >= 0 -> {
                     val outputBuffer = mediaCodec!!.getOutputBuffer(outputBufferIndex)

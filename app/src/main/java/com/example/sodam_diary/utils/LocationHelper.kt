@@ -33,9 +33,9 @@ class LocationHelper(private val context: Context) {
      * 현재 위치 정보 가져오기
      */
     suspend fun getCurrentLocation(): LocationData? {
-        Log.d("LocationHelper", "📍 위치 정보 요청 시작")
+        Log.d("LocationHelper", "위치 정보 요청 시작")
         if (!hasLocationPermission()) {
-            Log.w("LocationHelper", "❌ 위치 권한 없음")
+            Log.w("LocationHelper", "위치 권한 없음")
             return null
         }
         
@@ -58,7 +58,7 @@ class LocationHelper(private val context: Context) {
                     }
                 ).addOnSuccessListener { location ->
                     if (location != null) {
-                        Log.d("LocationHelper", "🎯 GPS 위치 획득 - lat: ${location.latitude}, lng: ${location.longitude}")
+                        Log.d("LocationHelper", "GPS 위치 획득 - lat: ${location.latitude}, lng: ${location.longitude}")
                         // 위치를 가져온 후 주소도 함께 처리
                         CoroutineScope(Dispatchers.IO).launch {
                             val addressName = getAddressFromCoordinates(location.latitude, location.longitude)
@@ -67,16 +67,16 @@ class LocationHelper(private val context: Context) {
                                 longitude = location.longitude,
                                 locationName = addressName
                             )
-                            Log.d("LocationHelper", "🏠 주소 변환 완료 - 주소: $addressName")
+                            Log.d("LocationHelper", "주소 변환 완료: $addressName")
                             continuation.resume(locationData)
                         }
                     } else {
-                        Log.w("LocationHelper", "❌ GPS 위치 정보 없음, lastLocation 시도")
+                        Log.w("LocationHelper", "GPS 위치 정보 없음, lastLocation 시도")
                         // 폴백: 마지막으로 알려진 위치 사용
                         fusedLocationClient.lastLocation
                             .addOnSuccessListener { lastLoc ->
                                 if (lastLoc != null) {
-                                    Log.d("LocationHelper", "🛰️ lastLocation 사용 - lat: ${lastLoc.latitude}, lng: ${lastLoc.longitude}")
+                                    Log.d("LocationHelper", "lastLocation 사용 - lat: ${lastLoc.latitude}, lng: ${lastLoc.longitude}")
                                     CoroutineScope(Dispatchers.IO).launch {
                                         val addressName = getAddressFromCoordinates(lastLoc.latitude, lastLoc.longitude)
                                         val locationData = LocationData(
@@ -84,21 +84,21 @@ class LocationHelper(private val context: Context) {
                                             longitude = lastLoc.longitude,
                                             locationName = addressName
                                         )
-                                        Log.d("LocationHelper", "🏠 주소 변환 완료(last) - 주소: $addressName")
+                                        Log.d("LocationHelper", "주소 변환 완료: $addressName")
                                         continuation.resume(locationData)
                                     }
                                 } else {
-                                    Log.w("LocationHelper", "❌ lastLocation 도 사용 불가")
+                                    Log.w("LocationHelper", "lastLocation 사용 불가")
                                     continuation.resume(null)
                                 }
                             }
                             .addOnFailureListener { lastEx ->
-                                Log.e("LocationHelper", "❌ lastLocation 획득 실패", lastEx)
+                                Log.e("LocationHelper", "lastLocation 획득 실패", lastEx)
                                 continuation.resume(null)
                             }
                     }
                 }.addOnFailureListener { exception ->
-                    Log.e("LocationHelper", "❌ 위치 정보 획득 실패", exception)
+                    Log.e("LocationHelper", "위치 정보 획득 실패", exception)
                     continuation.resume(null)
                 }
             }

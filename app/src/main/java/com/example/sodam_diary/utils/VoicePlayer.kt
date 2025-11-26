@@ -33,24 +33,24 @@ class VoicePlayer(private val context: Context) {
             
             val voiceFile = File(voicePath)
             if (!voiceFile.exists()) {
-                Log.w("VoicePlayer", "⚠️ 파일이 존재하지 않음: $voicePath")
+                Log.w("VoicePlayer", "파일이 존재하지 않음: $voicePath")
                 onError?.invoke("음성 파일을 찾을 수 없습니다")
                 return false
             }
             
-            Log.d("VoicePlayer", "🔊 재생 시작 - Path: $voicePath")
+            Log.d("VoicePlayer", "재생 시작: $voicePath")
             
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(voicePath)
                 prepare()
                 setOnCompletionListener {
-                    Log.d("VoicePlayer", "✅ 재생 완료")
+                    Log.d("VoicePlayer", "재생 완료")
                     _isPlaying = false
                     currentPlayingPath = null
                     onPlaybackComplete?.invoke()
                 }
                 setOnErrorListener { _, what, extra ->
-                    Log.e("VoicePlayer", "❌ 재생 오류 - what: $what, extra: $extra")
+                    Log.e("VoicePlayer", "재생 오류 - what: $what, extra: $extra")
                     onError?.invoke("음성 재생 중 오류가 발생했습니다")
                     cleanup()
                     true
@@ -64,7 +64,7 @@ class VoicePlayer(private val context: Context) {
             return true
             
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 재생 시작 실패", e)
+            Log.e("VoicePlayer", "재생 시작 실패", e)
             onError?.invoke("음성을 재생할 수 없습니다: ${e.message}")
             cleanup()
             return false
@@ -83,14 +83,14 @@ class VoicePlayer(private val context: Context) {
                 release()
             }
             
-            Log.d("VoicePlayer", "⏹️ 재생 중지")
+            Log.d("VoicePlayer", "재생 중지")
             
             _isPlaying = false
             currentPlayingPath = null
             mediaPlayer = null
             
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 재생 중지 실패", e)
+            Log.e("VoicePlayer", "재생 중지 실패", e)
             cleanup()
         }
     }
@@ -102,9 +102,9 @@ class VoicePlayer(private val context: Context) {
         try {
             mediaPlayer?.pause()
             _isPlaying = false
-            Log.d("VoicePlayer", "⏸️ 일시정지")
+            Log.d("VoicePlayer", "일시정지")
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 일시정지 실패", e)
+            Log.e("VoicePlayer", "일시정지 실패", e)
         }
     }
     
@@ -115,9 +115,9 @@ class VoicePlayer(private val context: Context) {
         try {
             mediaPlayer?.start()
             _isPlaying = true
-            Log.d("VoicePlayer", "▶️ 재개")
+            Log.d("VoicePlayer", "재개")
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 재개 실패", e)
+            Log.e("VoicePlayer", "재개 실패", e)
         }
     }
     
@@ -160,7 +160,7 @@ class VoicePlayer(private val context: Context) {
         try {
             mediaPlayer?.seekTo(position)
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ seekTo 실패", e)
+            Log.e("VoicePlayer", "seekTo 실패", e)
         }
     }
     
@@ -171,7 +171,7 @@ class VoicePlayer(private val context: Context) {
         try {
             mediaPlayer?.setVolume(volume, volume)
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 음량 설정 실패", e)
+            Log.e("VoicePlayer", "음량 설정 실패", e)
         }
     }
     
@@ -185,7 +185,7 @@ class VoicePlayer(private val context: Context) {
             _isPlaying = false
             currentPlayingPath = null
         } catch (e: Exception) {
-            Log.e("VoicePlayer", "❌ 정리 실패", e)
+            Log.e("VoicePlayer", "정리 실패", e)
         }
     }
     
@@ -206,7 +206,7 @@ class VoicePlayer(private val context: Context) {
     fun release() {
         stopVoice()
         cleanup()
-        Log.d("VoicePlayer", "🧹 리소스 해제 완료")
+        Log.d("VoicePlayer", "리소스 해제 완료")
     }
 }
 

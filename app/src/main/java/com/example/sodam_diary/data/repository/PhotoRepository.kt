@@ -38,14 +38,14 @@ class PhotoRepository(context: Context) {
         captureDate: Long
     ): Result<Long> {
         return try {
-            Log.d("PhotoRepository", "📸 사진 저장 시작 - Path: $photoPath")
-            Log.d("PhotoRepository", "🌍 위치 정보 - lat: $latitude, lng: $longitude, 주소: $locationName")
-            Log.d("PhotoRepository", "✏️ 사용자 입력 - userDescription: ${userDescription?.take(50)}")
-            Log.d("PhotoRepository", "🎤 음성 파일 - userVoicePath: $userVoicePath")
+            Log.d("PhotoRepository", "사진 저장 시작: $photoPath")
+            Log.d("PhotoRepository", "위치 정보 - lat: $latitude, lng: $longitude, 주소: $locationName")
+            Log.d("PhotoRepository", "사용자 입력: ${userDescription?.take(50)}")
+            Log.d("PhotoRepository", "음성 파일: $userVoicePath")
             
             // 1단계: 이미지 분석 (BLIP 캡션)
             val caption = analyzeImageForCaption(photoPath)
-            Log.d("PhotoRepository", "📷 BLIP 캡션 - caption: ${caption?.take(100)}")
+            Log.d("PhotoRepository", "BLIP 캡션: ${caption?.take(100)}")
             
             // 2단계: 일기 생성 (LLM) - caption이 있으면 항상 호출 (userDescription은 nullable)
             var imageDescription: String? = null
@@ -61,10 +61,10 @@ class PhotoRepository(context: Context) {
                 )
                 imageDescription = diaryResult?.first
                 tags = diaryResult?.second
-                Log.d("PhotoRepository", "📝 LLM 일기 - diary: ${imageDescription?.take(100)}")
-                Log.d("PhotoRepository", "🏷️ 태그 - tags: $tags")
+                Log.d("PhotoRepository", "LLM 일기: ${imageDescription?.take(100)}")
+                Log.d("PhotoRepository", "태그: $tags")
             } else {
-                Log.w("PhotoRepository", "⚠️ caption이 없어서 일기 생성 스킵")
+                Log.w("PhotoRepository", "caption이 없어서 일기 생성 스킵")
             }
             
             // 3. 모든 정보를 로컬 DB에 저장
@@ -82,11 +82,11 @@ class PhotoRepository(context: Context) {
             )
             
             val photoId = photoDao.insertPhoto(photoEntity)
-            Log.d("PhotoRepository", "💾 DB 저장 완료 - Photo ID: $photoId")
+            Log.d("PhotoRepository", "DB 저장 완료 - Photo ID: $photoId")
             Result.success(photoId)
             
         } catch (e: Exception) {
-            Log.e("PhotoRepository", "❌ 사진 저장 실패", e)
+            Log.e("PhotoRepository", "사진 저장 실패", e)
             Result.failure(e)
         }
     }
@@ -132,15 +132,15 @@ class PhotoRepository(context: Context) {
      */
     suspend fun analyzeImageForCaption(photoPath: String): String? {
         return try {
-            Log.d("PhotoRepository", "🌐 1단계 API 시작 - analyze")
+            Log.d("PhotoRepository", "1단계 API 시작 - analyze")
             val photoFile = File(photoPath)
             
             if (!photoFile.exists()) {
-                Log.w("PhotoRepository", "⚠️ 파일이 존재하지 않음: $photoPath")
+                Log.w("PhotoRepository", "파일이 존재하지 않음: $photoPath")
                 return null
             }
             
-            Log.d("PhotoRepository", "📁 파일 존재 확인 - Size: ${photoFile.length()} bytes")
+            Log.d("PhotoRepository", "파일 확인 - Size: ${photoFile.length()} bytes")
             
             // MIME 타입을 명시적으로 image/jpeg로 설정
             val mimeType = when {
@@ -149,33 +149,33 @@ class PhotoRepository(context: Context) {
                 photoFile.extension.lowercase() == "jpeg" -> "image/jpeg"
                 else -> "image/jpeg"
             }
-            Log.d("PhotoRepository", "📸 MIME Type: $mimeType")
+            Log.d("PhotoRepository", "MIME Type: $mimeType")
             
             val photoRequestBody = photoFile.asRequestBody(mimeType.toMediaTypeOrNull())
             val photoPart = MultipartBody.Part.createFormData("image_file", photoFile.name, photoRequestBody)
             
-            Log.d("PhotoRepository", "⏱️ analyze API 요청 시작 (15초 타임아웃)")
+            Log.d("PhotoRepository", "analyze API 요청 시작 (15초 타임아웃)")
             val response = withTimeoutOrNull(15_000) {
                 apiService.analyzeImage(photoPart)
             }
             
             when {
                 response == null -> {
-                    Log.w("PhotoRepository", "⏰ analyze API 타임아웃 (15초)")
+                    Log.w("PhotoRepository", "analyze API 타임아웃 (15초)")
                     null
                 }
                 response.isSuccessful -> {
                     val caption = response.body()?.caption
-                    Log.d("PhotoRepository", "✅ analyze API 성공 - caption: $caption")
+                    Log.d("PhotoRepository", "analyze API 성공 - caption: $caption")
                     caption
                 }
                 else -> {
-                    Log.w("PhotoRepository", "❌ analyze API 실패 - Code: ${response.code()}")
+                    Log.w("PhotoRepository", "analyze API 실패 - Code: ${response.code()}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("PhotoRepository", "🚫 analyze API 오류", e)
+            Log.e("PhotoRepository", "analyze API 오류", e)
             null
         }
     }
@@ -192,10 +192,10 @@ class PhotoRepository(context: Context) {
         location: String?
     ): Pair<String, String>? {
         return try {
-            Log.d("PhotoRepository", "🌐 2단계 API 시작 - generate")
-            Log.d("PhotoRepository", "📝 userInput: ${userInput?.take(30) ?: "null"}")
-            Log.d("PhotoRepository", "📷 blipCaption: ${blipCaption?.take(30) ?: "null"}")
-            Log.d("PhotoRepository", "📍 location: lat=$latitude, lng=$longitude, name=$location")
+            Log.d("PhotoRepository", "2단계 API 시작 - generate")
+            Log.d("PhotoRepository", "userInput: ${userInput?.take(30) ?: "null"}")
+            Log.d("PhotoRepository", "blipCaption: ${blipCaption?.take(30) ?: "null"}")
+            Log.d("PhotoRepository", "location: lat=$latitude, lng=$longitude, name=$location")
             
             val request = com.example.sodam_diary.data.network.GenerateRequest(
                 user_input = userInput,
@@ -205,14 +205,14 @@ class PhotoRepository(context: Context) {
                 location = location
             )
             
-            Log.d("PhotoRepository", "⏱️ generate API 요청 시작 (20초 타임아웃)")
+            Log.d("PhotoRepository", "generate API 요청 시작 (20초 타임아웃)")
             val response = withTimeoutOrNull(20_000) {
                 apiService.generateDiary(request)
             }
             
             when {
                 response == null -> {
-                    Log.w("PhotoRepository", "⏰ generate API 타임아웃 (20초)")
+                    Log.w("PhotoRepository", "generate API 타임아웃 (20초)")
                     null
                 }
                 response.isSuccessful -> {
@@ -221,8 +221,8 @@ class PhotoRepository(context: Context) {
                     val tagsList = body?.tags
                     val tagsString = tagsList?.joinToString(",") // 쉼표 구분 문자열로 변환
                     
-                    Log.d("PhotoRepository", "✅ generate API 성공 - diary: ${diary?.take(50)}")
-                    Log.d("PhotoRepository", "✅ tags: $tagsString")
+                    Log.d("PhotoRepository", "generate API 성공 - diary: ${diary?.take(50)}")
+                    Log.d("PhotoRepository", "tags: $tagsString")
                     
                     if (diary != null && tagsString != null) {
                         Pair(diary, tagsString)
@@ -231,12 +231,12 @@ class PhotoRepository(context: Context) {
                     }
                 }
                 else -> {
-                    Log.w("PhotoRepository", "❌ generate API 실패 - Code: ${response.code()}")
+                    Log.w("PhotoRepository", "generate API 실패 - Code: ${response.code()}")
                     null
                 }
             }
         } catch (e: Exception) {
-            Log.e("PhotoRepository", "🚫 generate API 오류", e)
+            Log.e("PhotoRepository", "generate API 오류", e)
             null
         }
     }
@@ -299,10 +299,10 @@ class PhotoRepository(context: Context) {
                 val voiceFile = File(voicePath)
                 if (voiceFile.exists()) {
                     voiceFile.delete()
-                    Log.d("PhotoRepository", "🎤 음성 파일 삭제 완료: $voicePath")
+                    Log.d("PhotoRepository", "음성 파일 삭제 완료: $voicePath")
                 }
             } catch (e: Exception) {
-                Log.e("PhotoRepository", "❌ 음성 파일 삭제 실패", e)
+                Log.e("PhotoRepository", "음성 파일 삭제 실패", e)
             }
         }
         
@@ -311,15 +311,15 @@ class PhotoRepository(context: Context) {
             val photoFile = File(photo.photoPath)
             if (photoFile.exists()) {
                 photoFile.delete()
-                Log.d("PhotoRepository", "📸 사진 파일 삭제 완료: ${photo.photoPath}")
+                Log.d("PhotoRepository", "사진 파일 삭제 완료: ${photo.photoPath}")
             }
         } catch (e: Exception) {
-            Log.e("PhotoRepository", "❌ 사진 파일 삭제 실패", e)
+            Log.e("PhotoRepository", "사진 파일 삭제 실패", e)
         }
         
         // 3. DB에서 삭제
         photoDao.deletePhoto(photo)
-        Log.d("PhotoRepository", "💾 DB 레코드 삭제 완료 - Photo ID: ${photo.id}")
+        Log.d("PhotoRepository", "DB 레코드 삭제 완료 - Photo ID: ${photo.id}")
     }
     
     /**
@@ -327,15 +327,15 @@ class PhotoRepository(context: Context) {
      */
     suspend fun searchPhotosByVoice(query: String): List<PhotoEntity> {
         val trimmedQuery = query.trim()
-        Log.d("PhotoRepository", "🔍 음성 검색 시작 - query: '$trimmedQuery'")
+        Log.d("PhotoRepository", "음성 검색 시작: '$trimmedQuery'")
         
         if (trimmedQuery.isEmpty()) {
-            Log.d("PhotoRepository", "⚠️ 빈 검색어 - 빈 결과 반환")
+            Log.d("PhotoRepository", "빈 검색어")
             return emptyList()
         }
         
         val results = photoDao.searchByVoiceQuery(trimmedQuery)
-        Log.d("PhotoRepository", "🔍 검색 결과: ${results.size}개")
+        Log.d("PhotoRepository", "검색 결과: ${results.size}개")
         return results
     }
 }

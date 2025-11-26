@@ -53,11 +53,11 @@ class AudioWriterWAV(private val context: Context) {
             
             dataSize = 0
             
-            Log.d(TAG, "✅ WAV 파일 생성: ${outputFile!!.absolutePath}")
+            Log.d(TAG, "WAV 파일 생성: ${outputFile!!.absolutePath}")
             return outputFile!!.absolutePath
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ WAV 파일 생성 실패", e)
+            Log.e(TAG, "WAV 파일 생성 실패", e)
             close()
             return null
         }
@@ -81,7 +81,7 @@ class AudioWriterWAV(private val context: Context) {
             dataSize += pcmData.size * 2  // 2 bytes per sample
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ PCM 데이터 쓰기 실패", e)
+            Log.e(TAG, "PCM 데이터 쓰기 실패", e)
         }
     }
     
@@ -101,12 +101,12 @@ class AudioWriterWAV(private val context: Context) {
                     writeWavHeader(raf, dataSize)
                     raf.close()
                     
-                    Log.d(TAG, "✅ WAV 파일 저장 완료: ${file.absolutePath} (${dataSize} bytes)")
+                    Log.d(TAG, "WAV 파일 저장 완료: ${file.absolutePath} (${dataSize} bytes)")
                 }
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ WAV 파일 닫기 실패", e)
+            Log.e(TAG, "WAV 파일 닫기 실패", e)
         }
     }
     
