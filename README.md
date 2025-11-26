@@ -63,6 +63,7 @@ Room을 DB가 모든 데이터의 Single source of truth 역할을 합니다. �
 
 ## Tech Stack
 
+|------|------|
 | Language | Kotlin |
 | UI | Jetpack Compose |
 | Local DB | Room |
