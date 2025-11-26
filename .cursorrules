@@ -1,0 +1,68 @@
+# Android Kotlin 시각장애인용 앨범 서비스 개발 규칙
+
+## 프로젝트 개요
+- 시각장애인용 앨범 서비스 (음성 읽기 기능 제공)
+- 코틀린 기반 안드로이드 앱
+- Voice Over 기능 사용
+
+## 개발 원칙
+1. **복잡한 로직 사용 금지** - 초심자도 이해할 수 있는 단순한 코드 작성
+2. **유지보수 용이성** - 명확하고 직관적인 코드 구조
+3. **파일 수 최소화** - 불필요한 파일 생성 금지
+4. **요구사항 준수** - 명시되지 않은 기능 구현 금지
+
+## 기술 스택
+- Language: Kotlin
+- UI: Jetpack Compose
+- Database: Room (SQLite)
+- Network: Retrofit2
+- Image Processing: Glide
+- Location: Android Location Services
+
+## 아키텍처 가이드라인
+- MVVM 패턴 사용 금지 (복잡성 증가)
+- Repository 패턴으로 데이터 계층 단순화
+- 단일 Activity + Compose 구조
+
+## 코딩 규칙
+1. **클래스/파일명**: PascalCase (예: PhotoEntity.kt)
+2. **함수/변수명**: camelCase (예: savePhotoData)
+3. **상수**: UPPER_SNAKE_CASE (예: MAX_PHOTO_SIZE)
+4. **패키지명**: 소문자 + 점 표기법
+
+## 데이터 구조
+- 하나의 Entity로 모든 정보 저장
+  - 촬영 사진 (파일 경로)
+  - 촬영 일자
+  - 촬영 장소
+  - 서버 감성정보 (텍스트)
+  - 사용자 입력정보 (텍스트)
+
+## 금지사항
+- 복잡한 디자인 패턴 사용 금지
+- 과도한 추상화 금지
+- 불필요한 의존성 추가 금지
+- 요구되지 않은 기능 구현 금지
+
+## 주석 작성
+- 복잡한 로직에만 한글 주석 작성
+- TODO 주석으로 미완성 기능 표시
+
+## 패키지 구조
+```
+com.sodamdiary
+├── data/
+│   ├── database/
+│   ├── repository/
+│   ├── network/
+│   └── DataModels.kt
+├── ui/
+│   └── screens/
+└── utils/
+```
+
+## 네이밍 컨벤션
+- Entity: ~Entity (예: PhotoEntity)
+- Repository: ~Repository (예: PhotoRepository)
+- Database: ~Database (예: AppDatabase)
+- Screen: ~Screen (예: CameraScreen)
