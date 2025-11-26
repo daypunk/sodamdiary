@@ -1,6 +1,12 @@
+<div align="center">
+
 # 소담일기
 
-[![App Image](https://github.com/user-attachments/assets/80d651c5-9319-46aa-800f-10346171cfd8)](https://m.onestore.co.kr/v2/ko-kr/app/0001003018)
+<a href="https://m.onestore.co.kr/v2/ko-kr/app/0001003018">
+  <img src="https://github.com/user-attachments/assets/80d651c5-9319-46aa-800f-10346171cfd8" width="400" />
+</a>
+
+</div>
 
 ## Summary
 
