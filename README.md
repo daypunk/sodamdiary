@@ -6,6 +6,10 @@
   <img src="https://github.com/user-attachments/assets/80d651c5-9319-46aa-800f-10346171cfd8" width="400" />
 </a>
 
+<br/>
+
+👆 클릭 시 원스토어로 이동
+
 </div>
 
 ## Summary
@@ -59,8 +63,6 @@ Room을 DB가 모든 데이터의 Single source of truth 역할을 합니다. �
 
 ## Tech Stack
 
-| 영역 | 기술 |
-|------|------|
 | Language | Kotlin |
 | UI | Jetpack Compose |
 | Local DB | Room |
