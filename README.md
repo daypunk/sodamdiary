@@ -3,7 +3,7 @@
 # 소담일기
 
 <a href="https://m.onestore.co.kr/v2/ko-kr/app/0001003018">
-  <img src="[https://i.ifh.cc/OM6hQK.png" width="400" />
+  <img src="https://i.ifh.cc/OM6hQK.png" width="400" />
 </a>
 
 <br/>
